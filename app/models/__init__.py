@@ -1,4 +1,5 @@
 from app.models.base import Base
+from app.models.role import Role
 from app.models.asignacion import Asignacion
 from app.models.cliente import (
     Cliente,
@@ -23,6 +24,7 @@ from app.models.tarifa_compra_transportista import TarifaCompraTransportista
 from app.models.tarifa_flete import TarifaFlete
 from app.models.transportista import Transportista, TransportistaContacto, TransportistaDocumento
 from app.models.unidad import Unidad
+from app.models.user import User
 from app.models.viaje import Viaje
 
 __all__ = [
@@ -48,9 +50,11 @@ __all__ = [
     "PagoOperador",
     "TarifaCompraTransportista",
     "TarifaFlete",
+    "Role",
     "Transportista",
     "TransportistaContacto",
     "TransportistaDocumento",
     "Unidad",
+    "User",
     "Viaje",
 ]

@@ -32,6 +32,30 @@ API REST del ERP logístico **SIFE-MXN** (FastAPI, SQLAlchemy 2, MySQL). Incluye
 
    Edita `.env` y define usuario, contraseña, host, puerto y nombre de la base de datos MySQL. Configura también `API_KEY` para proteger los endpoints versionados.
 
+   Para **usuarios del panel con JWT**, define además `JWT_SECRET_KEY` (cadena larga y aleatoria; no la compartas ni la subas al repositorio). Sin esta clave, el login por usuario/contraseña devolverá error; la API seguirá aceptando solo `X-API-Key` como hasta ahora.
+
+## Autenticación (API key y JWT)
+
+Los endpoints bajo `/api/v1` aceptan **uno** de estos métodos:
+
+- **Header `X-API-Key`**: igual que antes (integraciones y panel si no hay sesión JWT).
+- **Header `Authorization: Bearer <token>`**: token obtenido con `POST /api/v1/auth/login` (formulario OAuth2: `username`, `password`).
+
+Rutas útiles:
+
+- `POST /api/v1/auth/login` — obtiene el JWT (Swagger: *Authorize* con Bearer tras obtener token).
+- `GET /api/v1/auth/me` — perfil del usuario (solo Bearer JWT).
+
+**Panel web:** en [http://127.0.0.1:8000/ui](http://127.0.0.1:8000/ui) puede seguir usándose la API key inyectada desde `.env`, o iniciar sesión en [http://127.0.0.1:8000/login](http://127.0.0.1:8000/login) para guardar el JWT en el navegador.
+
+**Primer usuario administrador** (tras migraciones y con `JWT_SECRET_KEY` en `.env`):
+
+```powershell
+python scripts/create_admin_user.py --username admin --password "TuPasswordSeguro"
+```
+
+Roles iniciales en base de datos: `admin`, `operaciones`, `contabilidad`, `ventas`, `consulta` (los permisos por pantalla se pueden afinar en versiones siguientes).
+
 ## Base de datos MySQL
 
 1. Crea la base de datos (ajusta el nombre si cambiaste `MYSQL_DB`):
@@ -50,7 +74,7 @@ Desde la raíz del proyecto, con el virtualenv activado:
 python -m alembic upgrade head
 ```
 
-Esto aplica las revisiones hasta `head` (tablas `viajes`, `clientes`, `transportistas`, `fletes`, `operadores`, `unidades`, `asignaciones`, `despachos` y control asociado).
+Esto aplica las revisiones hasta `head` (tablas `viajes`, `clientes`, `transportistas`, `fletes`, `operadores`, `unidades`, `asignaciones`, `despachos`, `roles`, `users`, etc.).
 
 Para comprobar el estado:
 

@@ -1082,7 +1082,12 @@ _UI_TEMPLATE = """<!doctype html>
           <h2 id="page-title">Inicio</h2>
           <p id="page-description">Resumen del sistema y accesos a cada modulo sin mezclar pantallas.</p>
         </div>
-        <div class="meta">La API key se usa en segundo plano desde <code>.env</code>.</div>
+        <div class="meta" id="auth-bar-wrap">
+          <span id="auth-hint">Comprobando sesión…</span>
+          <a href="/login?next=/ui" id="auth-login-link" style="margin-left:10px;">Iniciar sesión (JWT)</a>
+          <button type="button" id="auth-logout-btn" class="secondary-button" style="margin-left:8px;display:none;">Cerrar sesión</button>
+          <span style="margin-left:12px;opacity:0.85;">| API key desde <code>.env</code> si no hay JWT</span>
+        </div>
       </div>
 
       <section class="banner">
@@ -7785,10 +7790,18 @@ _UI_TEMPLATE = """<!doctype html>
       window.sifeSetPage = setPage;
     }
 
+    function getAuthHeaders() {
+      const token = sessionStorage.getItem("sife_access_token");
+      if (token) {
+        return { Authorization: "Bearer " + token };
+      }
+      return { "X-API-Key": API_KEY };
+    }
+
     async function api(path, options = {}) {
       const headers = {
         "Accept": "application/json",
-        "X-API-Key": API_KEY,
+        ...getAuthHeaders(),
         ...(options.body ? {"Content-Type": "application/json"} : {}),
         ...(options.headers || {}),
       };
@@ -7837,6 +7850,44 @@ _UI_TEMPLATE = """<!doctype html>
       }
 
       return response.json();
+    }
+
+    async function initAuthBar() {
+      const hint = document.getElementById("auth-hint");
+      const loginLink = document.getElementById("auth-login-link");
+      const logoutBtn = document.getElementById("auth-logout-btn");
+      if (!hint || !loginLink || !logoutBtn) return;
+      logoutBtn.addEventListener("click", () => {
+        sessionStorage.removeItem("sife_access_token");
+        window.location.reload();
+      });
+      const token = sessionStorage.getItem("sife_access_token");
+      if (!token) {
+        hint.textContent = "Autenticación: API key (servidor). Pulse Iniciar sesión para JWT.";
+        loginLink.style.display = "";
+        logoutBtn.style.display = "none";
+        return;
+      }
+      try {
+        const r = await fetch(`${API_BASE}/auth/me`, {
+          headers: { Accept: "application/json", ...getAuthHeaders() },
+        });
+        if (!r.ok) {
+          sessionStorage.removeItem("sife_access_token");
+          hint.textContent = "Autenticación: API key (servidor). Token JWT inválido o expirado.";
+          loginLink.style.display = "";
+          logoutBtn.style.display = "none";
+          return;
+        }
+        const me = await r.json();
+        hint.textContent = "Sesión: " + me.username + " (" + me.role_name + ").";
+        loginLink.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+      } catch (_e) {
+        hint.textContent = "Autenticación: API key (servidor). No se pudo validar JWT.";
+        loginLink.style.display = "";
+        logoutBtn.style.display = "none";
+      }
     }
 
     const SELECT_CLASS = {
@@ -10944,7 +10995,7 @@ _UI_TEMPLATE = """<!doctype html>
             headers: {
               "Accept": "application/json",
               "Content-Type": "application/json",
-              "X-API-Key": API_KEY,
+              ...getAuthHeaders(),
             },
             body: JSON.stringify({
               salida_real: payload.salida_real,
@@ -11876,6 +11927,7 @@ _UI_TEMPLATE = """<!doctype html>
 
     async function boot() {
       initNavigation();
+      await initAuthBar();
       installCaptureFormCancelButtons();
       initForms();
       wireMoneyInputs();
@@ -11932,6 +11984,19 @@ def manual_cumplimiento() -> HTMLResponse:
     if not path.is_file():
         return HTMLResponse("<p>Manual no encontrado.</p>", status_code=404)
     return HTMLResponse(path.read_text(encoding="utf-8"))
+
+
+@router.get("/login", include_in_schema=False)
+def login_page() -> HTMLResponse:
+    path = Path(__file__).resolve().parent / "static" / "login.html"
+    if not path.is_file():
+        return HTMLResponse("<p>Login no encontrado.</p>", status_code=404)
+    html = path.read_text(encoding="utf-8")
+    html = html.replace("__API_V1_PREFIX__", json.dumps(settings.API_V1_PREFIX))
+    return HTMLResponse(
+        html,
+        headers={"Cache-Control": "no-store, no-cache, max-age=0, must-revalidate"},
+    )
 
 
 @router.get("/ui", include_in_schema=False)

@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
+from fastapi.openapi.utils import get_openapi
 
-from app.api.deps import require_api_key
+from app.api.deps import require_auth
 from app.api.routes import api_router
+from app.api.routes import auth as auth_routes
 from app.core.config import settings
 from app.web import router as web_router
 
@@ -40,14 +42,20 @@ app = FastAPI(
             "name": "cumplimiento-documental",
             "description": "Requisitos de documentación (Carta Porte, SCT, operador) y validación previa a salida.",
         },
+        {"name": "auth", "description": "Login JWT y perfil de usuario (Bearer)."},
         {"name": "sistema", "description": "Comprobación de disponibilidad del servicio."},
     ],
 )
 
 app.include_router(
+    auth_routes.router,
+    prefix=f"{settings.API_V1_PREFIX}/auth",
+    tags=["auth"],
+)
+app.include_router(
     api_router,
     prefix=settings.API_V1_PREFIX,
-    dependencies=[Depends(require_api_key)],
+    dependencies=[Depends(require_auth)],
 )
 app.include_router(web_router)
 
@@ -66,3 +74,31 @@ def health() -> dict[str, str | int]:
         "mysql_port": settings.MYSQL_PORT,
         "mysql_db": settings.MYSQL_DB,
     }
+
+
+def custom_openapi() -> dict:
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    openapi_schema.setdefault("components", {}).setdefault("securitySchemes", {})
+    openapi_schema["components"]["securitySchemes"]["ApiKeyAuth"] = {
+        "type": "apiKey",
+        "in": "header",
+        "name": settings.API_KEY_HEADER,
+    }
+    openapi_schema["components"]["securitySchemes"]["BearerAuth"] = {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+    }
+    openapi_schema["security"] = [{"ApiKeyAuth": []}, {"BearerAuth": []}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
