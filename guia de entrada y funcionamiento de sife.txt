@@ -1,0 +1,167 @@
+Guía operativa SIFE-MXN — del inicio al cierre
+Manual pensado para quien opera el día a día en el panel web y, si hace falta, en la API. Orden recomendado: maestros → comercial → viaje → flete → dinero → ejecución → seguimiento.
+
+1. Antes de empezar
+Servidor API en marcha (desde la carpeta del proyecto, con el virtualenv activado):
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+MySQL accesible con los datos de .env (MYSQL_*, base sife_mxn creada y migraciones aplicadas: python -m alembic upgrade head).
+Navegación principal
+Panel: http://127.0.0.1:8000/ui (o / según configuración).
+Documentación API: http://127.0.0.1:8000/docs.
+La API key del .env la usa el panel en segundo plano; para llamadas manuales a /api/v1/... envía el header configurado (p. ej. X-API-Key).
+2. Visión del flujo (de punta a punta)
+En línea general:
+
+Cliente (embarcador) → Transportista → Tarifas (venta y, si aplica, compra) → Viaje → Flete (precio/costo del servicio) → Gastos de viaje (costos reales) → Factura (cobro al cliente) → Operador y unidad → Asignación (quién lleva qué en qué viaje) → Despacho (programación operativa) → Seguimiento (salida, ruta, entrega, cierre).
+
+Ese orden no es obligatorio al milímetro (puedes dar de alta operadores antes), pero sí conviene tener cliente, transportista, tarifas y viaje antes de un flete coherente con cotización.
+
+3. Fase A — Catálogos base
+3.1 Clientes (menú Clientes)
+Alta del cliente (razón social, tipo, RFC, datos de contacto, notas).
+Contactos (quién atiende tráfico/compras, teléfonos, correos).
+Domicilios (origen/destino de carga, horarios, instrucciones).
+Condiciones comerciales (crédito, forma de pago, uso CFDI, etc.).
+Consejo: anota el ID del cliente para ligarlo en fletes y facturas.
+
+3.2 Transportistas (menú Transportistas)
+Alta del transportista (nombre, tipo: propio/subcontratado/etc., datos fiscales y operativos).
+Revisar nivel de confianza y notas si usarás asignación o ranking.
+3.3 Tarifas de venta (menú Tarifas)
+Nueva tarifa alineada a rutas reales: origen y destino exactamente como los usarás en viajes (misma redacción).
+Tipo de operación (perfil de venta), unidad, tipo de carga, coeficientes (base, km, kg, etc.).
+Modalidad de cobro (mixta, por_km, por_viaje, …): define qué entra en la línea de cotización; revisa advertencias del sistema si algo está mal configurado.
+Vigencia y activo.
+3.4 Tarifas de compra (menú Tarifas compra)
+Por transportista: misma lógica de ruta/unidad/carga que en terreno.
+Costo negociado (base, km, etc.) y modalidad coherente con cómo te cobra el proveedor.
+3.5 (Opcional temprano) Operadores y unidades
+Operadores y Unidades puedes crearlos cuando ya tengas el transportista asignado al servicio; no son requisito previo al viaje, pero sí necesarios antes de asignación y despacho.
+4. Fase B — Planeación del movimiento
+4.1 Viajes (menú Viajes)
+Nuevo viaje: código, estado, descripción, origen y destino, fechas, kilómetros estimados, notas.
+Origen/destino deben ser compatibles con las tarifas que usarás al cotizar.
+5. Fase C — El servicio comercial (flete)
+5.1 Fletes (menú Fletes)
+Nuevo flete: código, estado, cliente, transportista, viaje, tipo de operación, tipo de unidad y carga, peso, distancia, descripción.
+Método de cálculo: si eliges tarifa, usa Cotizar venta / Cotizar compra para rellenar montos según catálogo (respeta modalidad y revisa advertencias en pantalla).
+Ajusta solo si hay acuerdo explícito distinto al catálogo; deja constancia en notas.
+Guarda y anota el ID o código del flete para gastos, despacho y factura.
+6. Fase D — Dinero y control
+6.1 Gastos de viaje (menú Gastos viaje)
+Registra combustible, casetas, viáticos, etc. ligados al flete.
+Sirve para liquidación / rentabilidad real frente al costo estimado.
+6.2 Facturas (menú Facturas)
+Nueva factura: cliente, flete, fechas, concepto, subtotal, IVA según política.
+Idealmente el subtotal coincide con el precio de venta acordado en el flete (salvo notas de crédito o ajustes autorizados).
+7. Fase E — Ejecución en carretera
+7.1 Asignaciones (menú Asignaciones)
+Liga operador + unidad + viaje (fechas, km inicial/final si aplica).
+7.2 Despachos (menú Despachos)
+Crea el despacho ligando asignación y flete, hora de salida programada, observaciones.
+7.3 Seguimiento (menú Seguimiento)
+Registra salida, eventos en ruta si aplica, entrega y cierre con los datos que pida el formulario (horas, km, etc.).
+8. Extras y cumplimiento
+Manual cumplimiento (enlace lateral): documentación legal MX; ábrelo si trabajas cumplimiento documental (Carta Porte, SCT, etc.); puede ir en otra pestaña.
+Si un flujo no está en el panel, usa Swagger (/docs) para endpoints adicionales (motor de tarifas, cotizaciones guardadas, cumplimiento API, etc.).
+9. Cierre del ciclo (checklist rápido)
+Paso	¿Listo?
+Cliente y condiciones	☐
+Transportista	☐
+Tarifa venta (y compra si aplica) con textos alineados al viaje	☐
+Viaje creado	☐
+Flete con precio/costo coherente (cotización o acuerdo)	☐
+Gastos registrados	☐
+Factura alineada al flete	☐
+Operador y unidad	☐
+Asignación y despacho	☐
+Seguimiento hasta cierre	☐
+10. Reglas de oro para no descuadrar
+Misma redacción de origen/destino/unidad/carga entre viaje, tarifas y cotización.
+Cotizar antes de fijar precios si trabajas con tarifa; documenta excepciones.
+Factura coherente con flete salvo proceso formal de ajuste.
+Revisa advertencias al cotizar (peso duplicado, modalidad mal armada, etc.).
+Con esto tienes un camino único de principio a fin alineado al panel (Inicio → Catálogos → Operación) y a la lógica del sistema. Si quieres, en un siguiente mensaje lo podemos bajar a una sola tabla “pantalla → acción → resultado” por cada ítem del menú.Guía operativa SIFE-MXN — del inicio al cierre
+Manual pensado para quien opera el día a día en el panel web y, si hace falta, en la API. Orden recomendado: maestros → comercial → viaje → flete → dinero → ejecución → seguimiento.
+
+1. Antes de empezar
+Servidor API en marcha (desde la carpeta del proyecto, con el virtualenv activado):
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+MySQL accesible con los datos de .env (MYSQL_*, base sife_mxn creada y migraciones aplicadas: python -m alembic upgrade head).
+Navegación principal
+Panel: http://127.0.0.1:8000/ui (o / según configuración).
+Documentación API: http://127.0.0.1:8000/docs.
+La API key del .env la usa el panel en segundo plano; para llamadas manuales a /api/v1/... envía el header configurado (p. ej. X-API-Key).
+2. Visión del flujo (de punta a punta)
+En línea general:
+
+Cliente (embarcador) → Transportista → Tarifas (venta y, si aplica, compra) → Viaje → Flete (precio/costo del servicio) → Gastos de viaje (costos reales) → Factura (cobro al cliente) → Operador y unidad → Asignación (quién lleva qué en qué viaje) → Despacho (programación operativa) → Seguimiento (salida, ruta, entrega, cierre).
+
+Ese orden no es obligatorio al milímetro (puedes dar de alta operadores antes), pero sí conviene tener cliente, transportista, tarifas y viaje antes de un flete coherente con cotización.
+
+3. Fase A — Catálogos base
+3.1 Clientes (menú Clientes)
+Alta del cliente (razón social, tipo, RFC, datos de contacto, notas).
+Contactos (quién atiende tráfico/compras, teléfonos, correos).
+Domicilios (origen/destino de carga, horarios, instrucciones).
+Condiciones comerciales (crédito, forma de pago, uso CFDI, etc.).
+Consejo: anota el ID del cliente para ligarlo en fletes y facturas.
+
+3.2 Transportistas (menú Transportistas)
+Alta del transportista (nombre, tipo: propio/subcontratado/etc., datos fiscales y operativos).
+Revisar nivel de confianza y notas si usarás asignación o ranking.
+3.3 Tarifas de venta (menú Tarifas)
+Nueva tarifa alineada a rutas reales: origen y destino exactamente como los usarás en viajes (misma redacción).
+Tipo de operación (perfil de venta), unidad, tipo de carga, coeficientes (base, km, kg, etc.).
+Modalidad de cobro (mixta, por_km, por_viaje, …): define qué entra en la línea de cotización; revisa advertencias del sistema si algo está mal configurado.
+Vigencia y activo.
+3.4 Tarifas de compra (menú Tarifas compra)
+Por transportista: misma lógica de ruta/unidad/carga que en terreno.
+Costo negociado (base, km, etc.) y modalidad coherente con cómo te cobra el proveedor.
+3.5 (Opcional temprano) Operadores y unidades
+Operadores y Unidades puedes crearlos cuando ya tengas el transportista asignado al servicio; no son requisito previo al viaje, pero sí necesarios antes de asignación y despacho.
+4. Fase B — Planeación del movimiento
+4.1 Viajes (menú Viajes)
+Nuevo viaje: código, estado, descripción, origen y destino, fechas, kilómetros estimados, notas.
+Origen/destino deben ser compatibles con las tarifas que usarás al cotizar.
+5. Fase C — El servicio comercial (flete)
+5.1 Fletes (menú Fletes)
+Nuevo flete: código, estado, cliente, transportista, viaje, tipo de operación, tipo de unidad y carga, peso, distancia, descripción.
+Método de cálculo: si eliges tarifa, usa Cotizar venta / Cotizar compra para rellenar montos según catálogo (respeta modalidad y revisa advertencias en pantalla).
+Ajusta solo si hay acuerdo explícito distinto al catálogo; deja constancia en notas.
+Guarda y anota el ID o código del flete para gastos, despacho y factura.
+6. Fase D — Dinero y control
+6.1 Gastos de viaje (menú Gastos viaje)
+Registra combustible, casetas, viáticos, etc. ligados al flete.
+Sirve para liquidación / rentabilidad real frente al costo estimado.
+6.2 Facturas (menú Facturas)
+Nueva factura: cliente, flete, fechas, concepto, subtotal, IVA según política.
+Idealmente el subtotal coincide con el precio de venta acordado en el flete (salvo notas de crédito o ajustes autorizados).
+7. Fase E — Ejecución en carretera
+7.1 Asignaciones (menú Asignaciones)
+Liga operador + unidad + viaje (fechas, km inicial/final si aplica).
+7.2 Despachos (menú Despachos)
+Crea el despacho ligando asignación y flete, hora de salida programada, observaciones.
+7.3 Seguimiento (menú Seguimiento)
+Registra salida, eventos en ruta si aplica, entrega y cierre con los datos que pida el formulario (horas, km, etc.).
+8. Extras y cumplimiento
+Manual cumplimiento (enlace lateral): documentación legal MX; ábrelo si trabajas cumplimiento documental (Carta Porte, SCT, etc.); puede ir en otra pestaña.
+Si un flujo no está en el panel, usa Swagger (/docs) para endpoints adicionales (motor de tarifas, cotizaciones guardadas, cumplimiento API, etc.).
+9. Cierre del ciclo (checklist rápido)
+Paso	¿Listo?
+Cliente y condiciones	☐
+Transportista	☐
+Tarifa venta (y compra si aplica) con textos alineados al viaje	☐
+Viaje creado	☐
+Flete con precio/costo coherente (cotización o acuerdo)	☐
+Gastos registrados	☐
+Factura alineada al flete	☐
+Operador y unidad	☐
+Asignación y despacho	☐
+Seguimiento hasta cierre	☐
+10. Reglas de oro para no descuadrar
+Misma redacción de origen/destino/unidad/carga entre viaje, tarifas y cotización.
+Cotizar antes de fijar precios si trabajas con tarifa; documenta excepciones.
+Factura coherente con flete salvo proceso formal de ajuste.
+Revisa advertencias al cotizar (peso duplicado, modalidad mal armada, etc.).
+Con esto tienes un camino único de principio a fin alineado al panel (Inicio → Catálogos → Operación) y a la lógica del sistema. Si quieres, en un siguiente mensaje lo podemos bajar a una sola tabla “pantalla → acción → resultado” por cada ítem del menú.

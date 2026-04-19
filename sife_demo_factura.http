@@ -1,0 +1,318 @@
+### SIFE-MXN — Demo: flete Querétaro → NL + factura administrativa
+### Requiere extensión REST Client (VS Code/Cursor). Cambia @runId entre ejecuciones si hay conflicto de códigos únicos.
+### La factura es registro interno (no CFDI SAT).
+
+@baseUrl = http://127.0.0.1:8000
+@apiKey = cambia-esta-api-key
+@runId = demoQroNL01
+
+###
+# Salud
+GET {{baseUrl}}/health
+
+###
+# 1) Cliente (embarcador)
+# @name demoCliente
+POST {{baseUrl}}/api/v1/clientes
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "razon_social": "COMPONENTES INDUSTRIALES DEL BAJIO SA DE CV",
+  "nombre_comercial": "CIBSA Autopartes",
+  "rfc": "CIN040316JH4",
+  "tipo_cliente": "embarcador",
+  "sector": "Automotriz - Tier 2",
+  "origen_prospecto": "referido",
+  "email": "compras.logistica.{{runId}}@cibsa-demo.mx",
+  "telefono": "4422120045",
+  "direccion": "Av. Constituyentes Oriente 145, Col. Centro, Santiago de Querétaro, Qro., CP 76000",
+  "domicilio_fiscal": "Av. Constituyentes Oriente 145, Col. Centro, Santiago de Querétaro, Qro., CP 76000",
+  "sitio_web": "https://www.cibsa-demo.mx",
+  "notas_operativas": "Cita de carga L-V 08:00-16:00; pedir nombre de contacto en caseta.",
+  "notas_comerciales": "Pago 30 días; requiere remisión firmada en destino.",
+  "activo": true
+}
+
+###
+@clienteId = {{demoCliente.response.body.$.id}}
+
+###
+# 2) Transportista
+# @name demoTransportista
+POST {{baseUrl}}/api/v1/transportistas
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "nombre": "TRANSPORTES FRONTERA NORTE SA DE CV",
+  "nombre_razon_social": "TRANSPORTES FRONTERA NORTE SA DE CV",
+  "tipo_transportista": "subcontratado",
+  "tipo_persona": "moral",
+  "nombre_comercial": "TFN Cargo",
+  "rfc": "TFN980512XYZ",
+  "regimen_fiscal": "601 - General de Ley Personas Morales",
+  "estatus": "activo",
+  "contacto": "Mesa de tráfico nacional",
+  "telefono": "8183309900",
+  "email": "trafico.{{runId}}@tfn-cargo-demo.mx",
+  "direccion_fiscal": "Av. Lincoln 6400, Valle Verde 1er Sector, San Nicolás de los Garza, NL, CP 66460",
+  "direccion_operativa": "Mismo domicilio fiscal",
+  "ciudad": "San Nicolás de los Garza",
+  "estado": "Nuevo León",
+  "pais": "México",
+  "codigo_postal": "66460",
+  "nivel_confianza": "alto",
+  "prioridad_asignacion": 10,
+  "notas": "Flota propia tractocamión; permiso SCT vigente.",
+  "activo": true
+}
+
+###
+@transportistaId = {{demoTransportista.response.body.$.id}}
+
+###
+# 3) Viaje
+# @name demoViaje
+POST {{baseUrl}}/api/v1/viajes
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "codigo_viaje": "VJ-2026-QRO-NL-{{runId}}",
+  "descripcion": "Traslado autopartes Querétaro - Monterrey (Apodaca)",
+  "origen": "Parque industrial FINSA, El Marqués, Querétaro",
+  "destino": "Ciudad Apodaca, Nuevo León (bodega cliente)",
+  "fecha_salida": "2026-04-07T06:30:00",
+  "fecha_llegada_estimada": "2026-04-07T22:00:00",
+  "estado": "planificado",
+  "kilometros_estimados": "820.0",
+  "notas": "Evitar carga en horario pico CDMX; preferir arribo diurno en NL."
+}
+
+###
+@viajeId = {{demoViaje.response.body.$.id}}
+
+###
+# 4) Flete (servicio entregado)
+# @name demoFlete
+POST {{baseUrl}}/api/v1/fletes
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "codigo_flete": "FLT-2026-QRO-NL-{{runId}}",
+  "cliente_id": {{clienteId}},
+  "transportista_id": {{transportistaId}},
+  "viaje_id": {{viajeId}},
+  "descripcion_carga": "Autopartes para línea de ensamble; 22 tarimas; embalaje stretch film.",
+  "peso_kg": "18500.00",
+  "volumen_m3": "62.5",
+  "numero_bultos": 22,
+  "distancia_km": "820.0",
+  "tipo_operacion": "subcontratado",
+  "tipo_unidad": "tractocamion",
+  "tipo_carga": "general",
+  "monto_estimado": "48500.00",
+  "precio_venta": "48500.00",
+  "costo_transporte_estimado": "35200.00",
+  "costo_transporte_real": "34850.00",
+  "metodo_calculo": "manual",
+  "moneda": "MXN",
+  "estado": "entregado",
+  "notas": "Entrega conforme; sin observaciones de daño (demo SIFE-MXN)."
+}
+
+###
+@fleteId = {{demoFlete.response.body.$.id}}
+
+###
+# 5) Factura administrativa (IVA 16 %, método PPD, uso G03)
+# @name demoFactura
+POST {{baseUrl}}/api/v1/facturas
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "serie": "A",
+  "cliente_id": {{clienteId}},
+  "flete_id": {{fleteId}},
+  "orden_servicio_id": null,
+  "fecha_emision": "2026-04-08",
+  "fecha_vencimiento": "2026-05-08",
+  "concepto": "Flete terrestre tractocamión: Querétaro, Qro. a Apodaca, NL. Autopartes según remisión demo.",
+  "referencia": "OC-2026-8841 / FLT demo",
+  "moneda": "MXN",
+  "subtotal": "48500.00",
+  "iva_pct": "0.16",
+  "iva_monto": "7760.00",
+  "retencion_monto": "0.00",
+  "total": "56260.00",
+  "saldo_pendiente": "56260.00",
+  "forma_pago": "03 - Transferencia electrónica de fondos",
+  "metodo_pago": "PPD",
+  "uso_cfdi": "G03",
+  "estatus": "emitida",
+  "timbrada": false,
+  "observaciones": "Registro interno SIFE-MXN; no es CFDI del SAT."
+}
+
+###
+@facturaId = {{demoFactura.response.body.$.id}}
+
+###
+# 6) Consultar factura creada
+GET {{baseUrl}}/api/v1/facturas/{{facturaId}}
+X-API-Key: {{apiKey}}
+
+###
+# 7) Consultar flete vinculado
+GET {{baseUrl}}/api/v1/fletes/{{fleteId}}
+X-API-Key: {{apiKey}}
+
+### ---------------------------------------------------------------------------
+### Demo B — cadena completa con factura automática (generar-desde-flete)
+### Origen/destino deben coincidir con la tarifa de venta y el viaje del flete.
+### Cambia @runIdAuto si hay conflicto de códigos únicos.
+
+@runIdAuto = autoQroNl01
+@origenAuto = Parque industrial FINSA, El Marqués, Querétaro
+@destinoAuto = Ciudad Apodaca, Nuevo León (bodega cliente)
+
+###
+# B1) Tarifa de venta (ruta QRO → Apodaca)
+# @name autoTarifa
+POST {{baseUrl}}/api/v1/tarifas-flete
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "nombre_tarifa": "Ruta QRO-Apodaca demo auto {{runIdAuto}}",
+  "tipo_operacion": "subcontratado",
+  "ambito": "federal",
+  "modalidad_cobro": "mixta",
+  "origen": "{{origenAuto}}",
+  "destino": "{{destinoAuto}}",
+  "tipo_unidad": "tractocamion",
+  "tipo_carga": null,
+  "tarifa_base": "12000.00",
+  "tarifa_km": "34.50",
+  "tarifa_kg": "0",
+  "tarifa_tonelada": "0",
+  "recargo_minimo": "0",
+  "porcentaje_utilidad": "0.20",
+  "porcentaje_riesgo": "0",
+  "moneda": "MXN",
+  "activo": true
+}
+
+###
+# B2) Cliente
+# @name autoCliente
+POST {{baseUrl}}/api/v1/clientes
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "razon_social": "DEMO AUTO FACTURA SA DE CV",
+  "nombre_comercial": "Demo Auto",
+  "rfc": "AFA200101AAA",
+  "tipo_cliente": "embarcador",
+  "email": "demo.auto.{{runIdAuto}}@example.com",
+  "telefono": "5550000000",
+  "direccion": "Calle Demo 100, CDMX",
+  "activo": true
+}
+
+###
+# B3) Transportista
+# @name autoTransportista
+POST {{baseUrl}}/api/v1/transportistas
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "nombre": "TRANSPORTES DEMO AUTO SA DE CV",
+  "tipo_transportista": "subcontratado",
+  "rfc": "TDA200101AAA",
+  "email": "ops.{{runIdAuto}}@example.com",
+  "activo": true
+}
+
+###
+# B4) Viaje
+# @name autoViaje
+POST {{baseUrl}}/api/v1/viajes
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "codigo_viaje": "VJ-AUTO-{{runIdAuto}}",
+  "descripcion": "Demo factura automática",
+  "origen": "{{origenAuto}}",
+  "destino": "{{destinoAuto}}",
+  "fecha_salida": "2026-04-07T06:30:00",
+  "fecha_llegada_estimada": "2026-04-07T22:00:00",
+  "estado": "planificado",
+  "kilometros_estimados": "820.0"
+}
+
+###
+@autoClienteId = {{autoCliente.response.body.$.id}}
+@autoTransportistaId = {{autoTransportista.response.body.$.id}}
+@autoViajeId = {{autoViaje.response.body.$.id}}
+
+###
+# B5) Flete (precio alineado a tarifa recalculada ~48348 + IVA)
+# @name autoFlete
+POST {{baseUrl}}/api/v1/fletes
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "codigo_flete": "FLT-AUTO-{{runIdAuto}}",
+  "cliente_id": {{autoClienteId}},
+  "transportista_id": {{autoTransportistaId}},
+  "viaje_id": {{autoViajeId}},
+  "descripcion_carga": "Autopartes demo",
+  "peso_kg": "18500.00",
+  "distancia_km": "820.0",
+  "tipo_operacion": "subcontratado",
+  "tipo_unidad": "tractocamion",
+  "tipo_carga": "general",
+  "precio_venta": "48348.00",
+  "costo_transporte_estimado": "35200.00",
+  "metodo_calculo": "tarifa",
+  "moneda": "MXN",
+  "estado": "entregado"
+}
+
+###
+@autoFleteId = {{autoFlete.response.body.$.id}}
+
+###
+# B6) Vista previa (flete vs tarifa vigente)
+GET {{baseUrl}}/api/v1/facturas/preview-desde-flete/{{autoFleteId}}?iva_pct=0.16&retencion_monto=0
+X-API-Key: {{apiKey}}
+
+###
+# B7) Factura automática (subtotal desde tarifa recalculada; IVA/total en servidor)
+# @name autoFactura
+POST {{baseUrl}}/api/v1/facturas/generar-desde-flete
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "flete_id": {{autoFleteId}},
+  "serie": "A",
+  "iva_pct": "0.16",
+  "retencion_monto": "0",
+  "usar_precio_tarifa_recalculado": true,
+  "forma_pago": "03 - Transferencia electrónica de fondos",
+  "metodo_pago": "PPD",
+  "uso_cfdi": "G03",
+  "estatus": "emitida",
+  "timbrada": false,
+  "referencia": "OC-AUTO-{{runIdAuto}}",
+  "observaciones": "Generada con POST /facturas/generar-desde-flete (demo HTTP)."
+}

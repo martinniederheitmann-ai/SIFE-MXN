@@ -1,0 +1,36 @@
+========================================================================
+FACTURA ADMINISTRATIVA (DEMO SIFE-MXN)
+========================================================================
+Folio interno:     FAC-00001
+Serie:             A
+Estatus:           emitida
+Timbrada (CFDI):   No (demo)
+
+Cliente (razón):   Distribuidora del Golfo SA de CV
+RFC cliente:       DGO850312ABC
+
+Flete:             FLT-DEMO-VVER-VHS-001
+Orden servicio:    OS20260412-0001
+Cotización:        COT-00001
+
+Concepto:          Servicio de flete FLT-DEMO-VVER-VHS-001 · Veracruz — Villahermosa
+Referencia:        FLT-DEMO-VVER-VHS-001
+Moneda:            MXN
+
+Fecha emisión:     2026-04-16
+Fecha vencimiento: 2026-05-16
+Forma pago:        03
+Método pago:       PUE
+Uso CFDI:          G03
+
+Subtotal:          31268.40
+IVA (16.0000%):        5002.94
+Retención:         0.00
+TOTAL:             36271.34
+Saldo pendiente:   36271.34
+
+Observaciones:     Factura administrativa demo — no timbrada ante SAT.
+========================================================================
+Precio de venta en flete (tarifa): 31268.40
+Tarifa aplicada id: 1
+========================================================================

@@ -1,0 +1,272 @@
+@baseUrl = http://127.0.0.1:8000
+@apiKey = cambia-esta-api-key
+@runId = local01
+
+###
+# Salud publica
+GET {{baseUrl}}/health
+
+###
+# Crear cliente
+# @name createCliente
+POST {{baseUrl}}/api/v1/clientes
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "razon_social": "Cliente Demo {{runId}}",
+  "rfc": "XAXX010101000",
+  "email": "cliente.{{runId}}@demo.local",
+  "telefono": "5550000001",
+  "direccion": "Av. Principal 100, CDMX",
+  "activo": true
+}
+
+###
+@clienteId = {{createCliente.response.body.$.id}}
+
+###
+# Crear transportista
+# @name createTransportista
+POST {{baseUrl}}/api/v1/transportistas
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "nombre": "Transportes Demo {{runId}}",
+  "rfc": "XEXX010101000",
+  "contacto": "Mesa operativa",
+  "telefono": "5550000002",
+  "email": "trafico.{{runId}}@demo.local",
+  "notas": "Proveedor de prueba E2E.",
+  "activo": true
+}
+
+###
+@transportistaId = {{createTransportista.response.body.$.id}}
+
+###
+# Crear viaje
+# @name createViaje
+POST {{baseUrl}}/api/v1/viajes
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "codigo_viaje": "VIAJE-{{runId}}",
+  "descripcion": "Viaje de prueba E2E",
+  "origen": "CDMX",
+  "destino": "Puebla",
+  "fecha_salida": "2026-03-25T10:00:00Z",
+  "fecha_llegada_estimada": "2026-03-25T18:00:00Z",
+  "estado": "planificado",
+  "kilometros_estimados": 135.5,
+  "notas": "Creado desde archivo .http"
+}
+
+###
+@viajeId = {{createViaje.response.body.$.id}}
+
+###
+# Crear flete
+# @name createFlete
+POST {{baseUrl}}/api/v1/fletes
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "codigo_flete": "FLETE-{{runId}}",
+  "cliente_id": {{clienteId}},
+  "transportista_id": {{transportistaId}},
+  "viaje_id": {{viajeId}},
+  "descripcion_carga": "Tarimas de producto terminado",
+  "peso_kg": 12500.5,
+  "volumen_m3": 48.2,
+  "numero_bultos": 24,
+  "distancia_km": 135.5,
+  "monto_estimado": 18500.0,
+  "moneda": "MXN",
+  "estado": "cotizado",
+  "notas": "Flete de prueba E2E"
+}
+
+###
+@fleteId = {{createFlete.response.body.$.id}}
+
+###
+# Crear operador
+# @name createOperador
+POST {{baseUrl}}/api/v1/operadores
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "nombre": "Juan",
+  "apellido_paterno": "Perez",
+  "apellido_materno": "Lopez",
+  "fecha_nacimiento": "1990-05-14",
+  "curp": "PELJ900514HDFRPN09",
+  "rfc": "PELJ900514ABC",
+  "nss": "12345678901",
+  "estado_civil": "soltero",
+  "tipo_sangre": "O+",
+  "fotografia": null,
+  "telefono_principal": "5550000003",
+  "telefono_emergencia": "5550000004",
+  "nombre_contacto_emergencia": "Maria Lopez",
+  "direccion": "Calle 1 #200",
+  "colonia": "Centro",
+  "municipio": "Puebla",
+  "estado_geografico": "Puebla",
+  "codigo_postal": "72000",
+  "correo_electronico": "operador.{{runId}}@demo.local",
+  "anios_experiencia": 8,
+  "tipos_unidad_manejadas": ["torton", "tractocamion"],
+  "rutas_conocidas": "Mexico-Puebla-Veracruz",
+  "tipos_carga_experiencia": ["seca", "paletizada"],
+  "certificaciones": "Licencia federal vigente",
+  "ultima_revision_medica": "2026-01-10",
+  "resultado_apto": true,
+  "restricciones_medicas": null,
+  "proxima_revision_medica": "2027-01-10",
+  "puntualidad": 97.5,
+  "consumo_diesel_promedio": 3.4,
+  "consumo_gasolina_promedio": 2.8,
+  "incidencias_desempeno": null,
+  "calificacion_general": 96.0,
+  "comentarios_desempeno": "Operador para pruebas E2E"
+}
+
+###
+@operadorId = {{createOperador.response.body.$.id_operador}}
+
+###
+# Crear unidad
+# @name createUnidad
+POST {{baseUrl}}/api/v1/unidades
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "economico": "ECO-{{runId}}",
+  "placas": "ABC123D",
+  "descripcion": "Unidad demo",
+  "detalle": "Unidad para flujo E2E",
+  "activo": true
+}
+
+###
+@unidadId = {{createUnidad.response.body.$.id_unidad}}
+
+###
+# Crear asignacion
+# @name createAsignacion
+POST {{baseUrl}}/api/v1/asignaciones
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "id_operador": {{operadorId}},
+  "id_unidad": {{unidadId}},
+  "id_viaje": {{viajeId}},
+  "fecha_salida": "2026-03-25T10:00:00Z",
+  "fecha_regreso": null,
+  "km_inicial": 152340.5,
+  "km_final": null,
+  "rendimiento_combustible": null
+}
+
+###
+@asignacionId = {{createAsignacion.response.body.$.id_asignacion}}
+
+###
+# Crear despacho
+# @name createDespacho
+POST {{baseUrl}}/api/v1/despachos
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "id_asignacion": {{asignacionId}},
+  "id_flete": {{fleteId}},
+  "salida_programada": "2026-03-25T10:00:00Z",
+  "observaciones_transito": "Salida programada desde patio norte."
+}
+
+###
+@despachoId = {{createDespacho.response.body.$.id_despacho}}
+
+###
+# Registrar salida
+# @name registrarSalida
+POST {{baseUrl}}/api/v1/despachos/{{despachoId}}/salida
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "salida_real": "2026-03-25T10:15:00Z",
+  "km_salida": 152340.5,
+  "observaciones_salida": "Unidad sale sin novedad."
+}
+
+###
+# Registrar checkpoint
+# @name registrarEvento
+POST {{baseUrl}}/api/v1/despachos/{{despachoId}}/eventos
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "tipo_evento": "checkpoint",
+  "fecha_evento": "2026-03-25T14:30:00Z",
+  "ubicacion": "Arco Norte",
+  "descripcion": "Paso por caseta.",
+  "latitud": 19.9432101,
+  "longitud": -99.2100456
+}
+
+###
+# Registrar entrega
+# @name registrarEntrega
+POST {{baseUrl}}/api/v1/despachos/{{despachoId}}/entrega
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "fecha_entrega": "2026-03-25T18:45:00Z",
+  "evidencia_entrega": "https://servidor.local/evidencias/entrega-{{runId}}.jpg",
+  "firma_recibe": "Juan Perez",
+  "observaciones_entrega": "Mercancia recibida completa."
+}
+
+###
+# Cerrar despacho
+# @name cerrarDespacho
+POST {{baseUrl}}/api/v1/despachos/{{despachoId}}/cerrar
+X-API-Key: {{apiKey}}
+Content-Type: application/json
+
+{
+  "llegada_real": "2026-03-25T19:10:00Z",
+  "km_llegada": 152715.8,
+  "observaciones_cierre": "Servicio cerrado sin incidencias."
+}
+
+###
+# Consultar despacho final
+GET {{baseUrl}}/api/v1/despachos/{{despachoId}}
+X-API-Key: {{apiKey}}
+
+###
+# Consultar flete final
+GET {{baseUrl}}/api/v1/fletes/{{fleteId}}
+X-API-Key: {{apiKey}}
+
+###
+# Consultar viaje final
+GET {{baseUrl}}/api/v1/viajes/{{viajeId}}
+X-API-Key: {{apiKey}}
+
+###
+# Prueba negativa: endpoint protegido sin API key
+GET {{baseUrl}}/api/v1/viajes

@@ -1,0 +1,304 @@
+================================================================================
+MANUAL PARA CAPTURISTA — ORDENES DE SERVICIO Y FACTURAS (PANEL SIFE-MXN /ui)
+================================================================================
+Documento operativo: pasos en el orden en que aparecen en pantalla. Dirigido a
+quien captura datos o graba demostraciones sin necesidad de conocer la API.
+
+Version alineada al panel web en:  http://127.0.0.1:8000/ui
+(sustituya por la URL base que le indique su area de sistemas).
+
+--------------------------------------------------------------------------------
+ANTES DE EMPEZAR
+--------------------------------------------------------------------------------
+
+1) Navegador
+   - Use Chrome, Edge o Firefox actualizado.
+   - Zoom recomendado: 100 %.
+   - Si algo no carga: pulse Ctrl+F5 (recarga forzada).
+
+2) Acceso
+   - Abra la URL del panel (termina en /ui).
+   - La autenticacion con API key suele estar en segundo plano (.env del
+     servidor); usted no escribe clave en pantalla salvo que su empresa use
+     otro mecanismo.
+
+3) Textos en pantalla
+   - Los nombres de botones y pestañas en este manual coinciden con los del
+     sistema en español (sin acentos en algunos rotulos del panel: "Ordenes",
+     "Consultar", etc.).
+
+--------------------------------------------------------------------------------
+GLOSARIO (LECTURA RAPIDA)
+--------------------------------------------------------------------------------
+
+Orden de servicio (OS)
+  Documento interno que une lo acordado con el cliente (cotizacion, precio,
+  ruta) con la ejecucion (flete, viaje). Tiene su propio FOLIO (ej. OS20260416-0001).
+
+Folio
+  Codigo legible de la orden (letras y numeros). Sirve para buscarla en listados
+  y en facturas.
+
+ID (orden de servicio)
+  Numero interno unico (entero). La factura guarda la referencia por ID, no por
+  folio; el sistema puede rellenar el ID a partir del folio con el boton
+  "Aplicar folio".
+
+Factura (en este panel)
+  Registro administrativo de cobro; no sustituye al CFDI del SAT. Puede ligarse
+  opcionalmente a un flete y a una orden de servicio.
+
+--------------------------------------------------------------------------------
+PARTE A — UBICAR EL MODULO DE FLETES
+--------------------------------------------------------------------------------
+
+PASO A1
+  En la barra lateral izquierda, localice el grupo titulado "Catalogos".
+
+PASO A2
+  Haga clic en el boton "Fletes".
+  Subtitulo visible: "Costo y vinculacion".
+
+PASO A3
+  Arriba del formulario verá la franja de subopciones. Debe ver cuatro pestañas:
+    - Nuevo flete
+    - Consultar y editar
+    - Ordenes de servicio   <-- manual de ordenes
+    - Manual
+
+RESULTADO ESPERADO
+  El titulo principal de la pagina (parte superior) indica "Fletes" y una
+  descripcion breve.
+
+--------------------------------------------------------------------------------
+PARTE B — LISTADO DE ORDENES DE SERVICIO (SOLO CONSULTA)
+--------------------------------------------------------------------------------
+
+IMPORTANTE
+  En esta pestaña NO se crean ni editan ordenes desde el panel. Solo consulta,
+  filtros y detalle. Las altas y cambios de estatus siguen haciendose por otros
+  medios (API o procesos internos), salvo que su empresa agregue mas adelante
+  pantallas de alta.
+
+PASO B1
+  Haga clic en la pestaña "Ordenes de servicio".
+
+PASO B2
+  Lea el texto de ayuda (hint) bajo el titulo "Ordenes de servicio". Indica que
+  es informacion de compromiso entre cotizacion y ejecucion.
+
+PASO B3 — Zona "Filtrar"
+  Localice el encabezado "Filtrar" y el formulario con tres campos:
+
+  Campo "Buscar"
+    - Caja de texto / busqueda.
+    - Puede escribir: folio de la orden, parte del origen o destino, texto del
+      cliente, codigo de flete, folio de cotizacion, etc., segun lo que el
+      sistema tenga cargado.
+    - La tabla se acota mientras escribe (filtro en vivo), coherente con el
+      modo de busqueda global del panel (contiene / prefijos / todas las
+      palabras — mismo criterio que otros listados).
+
+  Campo "Cliente"
+    - Lista desplegable "Todos" o un cliente concreto.
+    - Al cambiar el cliente, el listado se actualiza.
+
+  Campo "Estatus"
+    - Opciones: Todos, borrador, confirmada, programada, en_ejecucion, cerrada,
+      cancelada.
+    - Elija uno para ver solo ordenes en ese estado.
+
+PASO B4
+  Pulse "Aplicar filtro" si su pantalla lo requiere (en muchos casos el filtro
+  ya se aplica al escribir o al cambiar listas).
+
+PASO B5
+  Pulse "Limpiar" cuando quiera quitar todos los criterios y volver a ver el
+  universo de ordenes (hasta el limite que cargue el servidor, normalmente
+  listados amplios).
+
+RESULTADO ESPERADO
+  Debajo de los filtros aparece una TABLA con columnas similares a:
+    ID | Folio | Cliente | Estatus | Cotizacion | Flete | Fecha prog. | Precio comp. | Acciones
+
+  Si no hay registros:
+    Mensaje indicando que no hay ordenes o que puede crearlas por API / scripts
+    (texto fijo del sistema).
+
+--------------------------------------------------------------------------------
+PARTE C — VER DETALLE DE UNA ORDEN
+--------------------------------------------------------------------------------
+
+PASO C1
+  En la tabla, localice la fila de la orden deseada.
+
+PASO C2
+  En la columna "Acciones", pulse el boton "Ver detalle".
+
+PASO C3
+  Se abre un panel inferior (bloque) titulado "Detalle de orden de servicio".
+
+PASO C4 — Contenido del detalle (texto)
+  Revise linea a linea la informacion mostrada. Suele incluir:
+    - Folio e ID interno
+    - Estatus
+    - Cliente
+    - Origen y destino
+    - Tipo de unidad y tipo de carga
+    - Peso y distancia
+    - Precio comprometido y moneda
+    - Fecha de solicitud y fecha programada
+    - Referencia a cotizacion (folio e id si existe)
+    - Referencia a flete (codigo e id si existe)
+    - Referencia a viaje (codigo e id si existe)
+    - Referencia a despacho (id y estatus si existe)
+    - Observaciones
+
+PASO C5
+  Pulse "Cerrar" en el panel de detalle para ocultarlo.
+
+NOTA
+  Si el panel queda visible y molesta al cambiar de filtro, use "Limpiar" en
+  filtros o "Cerrar" antes de seguir.
+
+--------------------------------------------------------------------------------
+PARTE D — FACTURA: CAMPO "ORDEN DE SERVICIO" (ID MANUAL)
+--------------------------------------------------------------------------------
+
+CONTEXTO
+  En facturas el sistema guarda la relacion con la orden mediante un NUMERO
+  (ID), no el folio escrito libremente. Si usted conoce solo el folio, use la
+  PARTE E.
+
+PASO D1
+  En el menu lateral, pulse "Facturas" (Catalogos → Facturas).
+  Subtitulo: "Simulacion administrativa de cobro".
+
+PASO D2
+  Seleccione la pestaña "Nueva factura" si va a capturar un alta.
+
+PASO D3
+  Complete primero los datos obligatorios que su proceso indique (cliente,
+  fechas, concepto, montos, etc.).
+
+PASO D4
+  Localice la tercera columna del bloque donde aparecen Cliente y Flete:
+    Etiqueta: "Orden de servicio"
+    Caja: placeholder "ID numerico (opcional)"
+
+PASO D5
+  Si ya conoce el ID numerico de la orden (por ejemplo lo vio en la tabla de
+  Fletes → Ordenes de servicio, columna ID):
+    - Escriba SOLO numeros enteros, sin letras.
+    - Ejemplo valido: 3
+    - No escriba el folio aqui a mano (OS2026...), salvo que coincida por
+      casualidad no aplica: el folio NO es el ID.
+
+PASO D6
+  Continue con el flujo de guardado segun su manual de facturacion (boton
+  "Guardar factura" al final del formulario).
+
+--------------------------------------------------------------------------------
+PARTE E — FACTURA: BUSCAR ORDEN POR FOLIO ("APLICAR FOLIO")
+--------------------------------------------------------------------------------
+
+CUANDO USARLO
+  Cuando tiene el FOLIO de la orden (p. ej. OS20260416-0001) pero no recuerda
+  el ID numerico.
+
+PASO E1
+  En "Nueva factura", bajo la fila de Cliente / Flete / Orden de servicio,
+  aparece una fila adicional:
+    - Etiqueta: "Buscar por folio de orden (rellena el ID)"
+    - Caja de texto para el folio
+    - Boton "Aplicar folio"
+
+PASO E2
+  Escriba el folio completo o una parte reconocible:
+    - Recomendado: folio completo tal como aparece en la tabla de ordenes.
+
+PASO E3
+  Pulse "Aplicar folio".
+
+RESULTADO ESPERADO
+  - El campo "Orden de servicio" (ID numerico) se rellena solo con el ID
+    correcto.
+  - Un mensaje bajo el formulario confirma algo como: Orden OS... (ID n)
+    aplicada.
+
+SI FALLA
+  - Mensaje de error: no se encontro orden con ese folio.
+  - Acciones: pulse F5 para recargar datos; confirme el folio en Fletes →
+    Ordenes de servicio; verifique que no haya espacios extra al copiar/pegar.
+
+PASO E4 — Edicion de factura existente
+  Vaya a "Consultar y editar" en Facturas, localice la factura, pulse "Editar".
+  En el formulario de edicion encontrara la misma pareja:
+    - Orden de servicio (ID)
+    - Buscar por folio + "Aplicar folio"
+  Procedimiento identico a la nueva factura; los mensajes de exito/error van al
+  area de mensajes de la edicion.
+
+--------------------------------------------------------------------------------
+PARTE F — RESUMEN EN PANTALLA DE INICIO (CONTADOR)
+--------------------------------------------------------------------------------
+
+PASO F1
+  En el menu lateral pulse "Inicio".
+
+PASO F2
+  En la cuadricula de metricas, busque la tarjeta cuyo rotulo incluye
+  "Ordenes servicio" (o similar). El numero indica cuantas ordenes hay en el
+  listado cargado en sesion (sujeto al limite de la API).
+
+Uso para captura / video
+  Puede mostrar este numero antes y despues de un proceso de carga de datos de
+  prueba, si su guion lo requiere.
+
+--------------------------------------------------------------------------------
+PARTE G — ERRORES COMUNES Y QUE HACER
+--------------------------------------------------------------------------------
+
+Problema: La tabla de ordenes esta vacia
+  - Causa probable: aun no existen ordenes en la base de datos de prueba, o el
+    entorno no ejecuto la carga inicial (semilla / script).
+  - Accion: coordinar con sistemas o usar el script de demo documentado en
+    scripts/DEMO_CAPTURA_PRUEBA_SISTEMA.txt
+
+Problema: "Aplicar folio" no encuentra la orden
+  - Verifique que el folio sea exactamente el de la tabla (mayusculas/minusculas
+    suelen ser indistintas en la busqueda implementada, pero evite caracteres
+    raros).
+  - Recargue la pagina para asegurar que el listado de ordenes en memoria esta
+    actualizado.
+
+Problema: En detalle de orden faltan cotizacion, flete o viaje
+  - Es normal si ese registro aun no fue vinculado en el sistema; el panel
+    muestra "—" donde no hay relacion.
+
+Problema: Confusion entre ID de flete y ID de orden
+  - Son conceptos distintos. El ID de orden es el de la columna "ID" en la
+    pestaña Ordenes de servicio, no el codigo de flete (FLT-...).
+
+--------------------------------------------------------------------------------
+SECUENCIA SUGERIDA PARA UNA GRABACION (GUIÓN CORTO)
+--------------------------------------------------------------------------------
+
+  1. Inicio → mostrar metricas (opcional).
+  2. Fletes → Ordenes de servicio → mostrar tabla.
+  3. Aplicar filtro por cliente o estatus → mostrar resultado.
+  4. Ver detalle → leer en voz alta folio y estatus → Cerrar.
+  5. Facturas → Nueva factura → escribir folio en "Buscar por folio" → Aplicar
+     folio → mostrar que el ID se relleno → (opcional) no guardar si es demo.
+
+--------------------------------------------------------------------------------
+CONTACTO DE SOPORTE INTERNO
+--------------------------------------------------------------------------------
+
+  Para fallos de servidor, permisos o datos que no existen en catalogos, el
+  capturista debe escalar a sistemas. Este manual no sustituye al manual
+  fiscal ni al de CFDI del SAT.
+
+================================================================================
+Fin del manual para capturista
+================================================================================

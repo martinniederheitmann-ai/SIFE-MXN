@@ -1,0 +1,18 @@
+{
+  "km": 300,
+  "toneladas": 15,
+  "tipo_unidad": "torton",
+  "tipo_carga": "general",
+  "ambito": "estatal",
+  "tipo_transportista": "propio",
+  "zona_riesgo": "medio",
+  "nivel_zona": "veracruz_sureste",
+  "casetas": 1200,
+  "viaticos": 500,
+  "maniobras": 0,
+  "costos_mensuales_unidad": 120000,
+  "viajes_mensuales": 20,
+  "urgencia": false,
+  "factor_diesel": 1.0,
+  "factor_clima": 1.0
+}

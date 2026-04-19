@@ -1,0 +1,269 @@
+Sí. Te dejo 5 ejemplos completos y realistas para practicar en el sistema, desde contacto comercial hasta entrega y facturación.
+
+La idea es que cada ejemplo te sirva para capturar en este orden:
+
+Clientes
+Transportistas
+Viajes
+Fletes
+Asignaciones
+Despachos
+Seguimiento
+Facturas
+Caso 1: Abarrotes Secos
+Tipo: carga seca, ruta corta, facturación simple.
+
+Contacto al cliente
+
+Cliente: Distribuidora Centro Norte SA de CV
+Contacto: Ana Martínez
+Área: Compras
+Servicio solicitado: mover abarrotes secos de CDMX a Puebla
+Condición comercial: 15 días de crédito
+Datos del movimiento
+
+Origen: Iztapalapa, CDMX
+Destino: Puebla, Puebla
+Tipo unidad: Torton
+Tipo carga: seca
+Peso: 8,500 kg
+Distancia: 135 km
+Bultos: 420
+Fecha salida: 2026-04-05 08:00
+Flete
+
+Código flete: FLT-0001
+Precio venta estimado: 18,500.00
+Costo compra estimado: 14,200.00
+Margen estimado: 4,300.00
+Operación
+
+Viaje: VIA-0001
+Transportista: Transportes Demo SA de CV
+Operador: uno disponible
+Unidad: Torton 14T
+Entrega
+
+Fecha entrega: 2026-04-05 14:30
+Evidencia: POD firmado
+Recibe: Luis Herrera
+Factura simulada
+
+Serie: A
+Concepto: Servicio de flete CDMX - Puebla
+Subtotal: 18,500.00
+IVA 16%: 2,960.00
+Total: 21,460.00
+Estatus: emitida
+Caso 2: Producto Refrigerado
+Tipo: carga refrigerada, control más delicado.
+
+Contacto al cliente
+
+Cliente: Lácteos del Bajío SA
+Contacto: Miriam Solís
+Área: Logística
+Servicio solicitado: traslado refrigerado de Guadalajara a León
+Condición comercial: 30 días de crédito
+Datos del movimiento
+
+Origen: Guadalajara, Jalisco
+Destino: León, Guanajuato
+Tipo unidad: Caja refrigerada 53
+Tipo carga: refrigerada
+Peso: 19,200 kg
+Distancia: 230 km
+Bultos: 1,080
+Fecha salida: 2026-04-06 04:00
+Flete
+
+Código flete: FLT-0002
+Precio venta estimado: 42,000.00
+Costo compra estimado: 34,800.00
+Margen estimado: 7,200.00
+Operación
+
+Viaje: VIA-0002
+Transportista: Frío Express del Occidente
+Requiere monitoreo de temperatura
+Despacho con observación: mantener 4°C
+Entrega
+
+Fecha entrega: 2026-04-06 11:20
+Evidencia: acuse de recibo + temperatura
+Recibe: Patricia Gómez
+Factura simulada
+
+Serie: A
+Concepto: Servicio de flete refrigerado Guadalajara - León
+Subtotal: 42,000.00
+IVA 16%: 6,720.00
+Total: 48,720.00
+Estatus: enviada
+Caso 3: Maquinaria Industrial
+Tipo: carga pesada, mayor valor.
+
+Contacto al cliente
+
+Cliente: Maquinados Industriales del Norte
+Contacto: Jorge Castañeda
+Área: Tráfico
+Servicio solicitado: traslado de maquinaria de Monterrey a San Luis Potosí
+Condición comercial: 50% anticipo / saldo contra entrega
+Datos del movimiento
+
+Origen: Monterrey, Nuevo León
+Destino: San Luis Potosí, SLP
+Tipo unidad: Plataforma
+Tipo carga: maquinaria
+Peso: 22,500 kg
+Distancia: 510 km
+Bultos: 6
+Fecha salida: 2026-04-07 07:00
+Flete
+
+Código flete: FLT-0003
+Precio venta estimado: 68,000.00
+Costo compra estimado: 56,500.00
+Margen estimado: 11,500.00
+Operación
+
+Viaje: VIA-0003
+Transportista: Cargas Especiales del Norte
+Requiere maniobra de carga
+Observación: asegurar con cadena y cinchos
+Entrega
+
+Fecha entrega: 2026-04-08 09:45
+Evidencia: POD + fotos
+Recibe: Ing. Fernando Ruiz
+Factura simulada
+
+Serie: B
+Concepto: Servicio de traslado de maquinaria Monterrey - SLP
+Subtotal: 68,000.00
+IVA 16%: 10,880.00
+Total: 78,880.00
+Estatus: parcial
+Caso 4: Material Peligroso
+Tipo: operación más sensible, ideal para probar notas y seguimiento.
+
+Contacto al cliente
+
+Cliente: Químicos del Golfo
+Contacto: Verónica Salas
+Área: Compras / Seguridad
+Servicio solicitado: traslado de químicos de Veracruz a Puebla
+Condición comercial: contado
+Datos del movimiento
+
+Origen: Veracruz, Veracruz
+Destino: Puebla, Puebla
+Tipo unidad: Autotanque
+Tipo carga: peligrosa
+Peso: 31,000 kg
+Distancia: 290 km
+Bultos: 1
+Fecha salida: 2026-04-08 06:30
+Flete
+
+Código flete: FLT-0004
+Precio venta estimado: 75,000.00
+Costo compra estimado: 63,000.00
+Margen estimado: 12,000.00
+Operación
+
+Viaje: VIA-0004
+Transportista: Autotanques Seguros MX
+Documentos del transportista: póliza, permiso, vigencias
+Observación: operación con protocolo de seguridad
+Entrega
+
+Fecha entrega: 2026-04-08 15:40
+Evidencia: recibo de planta
+Recibe: Carlos Mejía
+Factura simulada
+
+Serie: B
+Concepto: Servicio de flete material peligroso Veracruz - Puebla
+Subtotal: 75,000.00
+IVA 16%: 12,000.00
+Total: 87,000.00
+Estatus: cobrada
+Caso 5: Importación / Contenedor
+Tipo: movimiento de puerto a planta, útil para probar referencia y seguimiento.
+
+Contacto al cliente
+
+Cliente: Importadora del Bajío SA
+Contacto: Daniel Ortega
+Área: Comercio Exterior
+Servicio solicitado: traslado de contenedor de Manzanillo a Querétaro
+Condición comercial: 20 días de crédito
+Datos del movimiento
+
+Origen: Manzanillo, Colima
+Destino: Querétaro, Querétaro
+Tipo unidad: Full contenedor 40
+Tipo carga: importacion
+Peso: 24,000 kg
+Distancia: 710 km
+Bultos: 1 contenedor
+Fecha salida: 2026-04-09 05:00
+Flete
+
+Código flete: FLT-0005
+Precio venta estimado: 96,000.00
+Costo compra estimado: 82,500.00
+Margen estimado: 13,500.00
+Operación
+
+Viaje: VIA-0005
+Transportista: Intermodal Pacífico
+Observación: liberación aduanal previa
+Referencia operativa: CONT-40HQ-9981
+Entrega
+
+Fecha entrega: 2026-04-10 13:10
+Evidencia: acuse de almacén
+Recibe: Alma Ríos
+Factura simulada
+
+Serie: C
+Concepto: Servicio de flete contenedor Manzanillo - Querétaro
+Referencia: CONT-40HQ-9981
+Subtotal: 96,000.00
+IVA 16%: 15,360.00
+Total: 111,360.00
+Estatus: emitida
+
+Cómo capturarlos en tu sistema
+Para cada caso, usa este flujo:
+
+En Clientes, crea el cliente y su contacto.
+En Transportistas, crea o reutiliza el proveedor.
+En Viajes, registra origen, destino y fechas.
+En Fletes, captura peso, unidad, carga, venta y compra.
+En Asignaciones, une operador, unidad y viaje.
+En Despachos, programa salida.
+En Seguimiento, registra salida, evento y entrega.
+En Facturas, usa Autollenar desde flete y ajusta IVA/estatus.
+Recomendación práctica
+Para que tu prueba salga bien, te conviene empezar con estos 3 primero:
+
+Caso 1
+Caso 2
+Caso 5
+Porque te prueban:
+
+carga seca
+refrigerada
+contenedor/importación
+Si quieres, en el siguiente mensaje te los convierto en formato listo para capturar, módulo por módulo, por ejemplo:
+
+Cliente
+Viaje
+Flete
+Factura
+con valores exactos para copiar en cada pantalla.
+

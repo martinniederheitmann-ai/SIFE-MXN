@@ -1,0 +1,254 @@
+Aquí tienes la guía de captura punta a punta alineada con el demo Veracruz → Villahermosa (federal, carga general, operación propia) que cargamos. Úsala para comparar con lo que ves en SIFE-MXN al capturar manualmente.
+
+Orden sugerido de módulos
+Clientes (maestro → contacto → domicilio → condiciones comerciales)
+Transportistas (maestro propio → contacto → documento)
+Tarifas de venta (tarifas-flete)
+Tarifas de compra por transportista (tarifas-compra-transportista)
+Viajes
+Fletes: cotizar → guardar cotización → aceptar → convertir a flete
+Órdenes de servicio (desde cotización, ya convertida)
+Operadores
+Unidades
+Asignaciones
+Despachos (salida, eventos, entrega, cierre)
+Gastos de viaje
+Facturas (generar desde flete o captura manual equivalente)
+1. Cliente (maestro)
+Campo	Valor
+Razón social	Distribuidora del Golfo SA de CV
+Nombre comercial	DistriGolfo
+RFC	DGO850312ABC
+Tipo cliente	embarcador
+Sector	Carga general
+Email	logistica@distrigolfo.demo
+Teléfono	2295550100
+Dirección	Blvd. Manuel Avila Camacho 2100, Veracruz, Ver.
+Activo	Sí
+2. Contacto del cliente
+Campo	Valor
+Nombre	María Elena Fuentes
+Área	Tráfico
+Puesto	Jefa de embarques
+Teléfono	2295550101
+Email	mfuentes@distrigolfo.demo
+Principal	Sí
+Activo	Sí
+3. Domicilio del cliente
+Campo	Valor
+Tipo domicilio	cedis
+Nombre sede	CEDIS Veracruz Norte
+Dirección completa	Carretera Xalapa-Veracruz Km 4.5, Col. Industrial
+Municipio	Veracruz
+Estado	Veracruz
+C.P.	91919
+Horario carga	07:00-18:00
+Horario descarga	08:00-17:00
+Instrucciones acceso	Cita 24 h antes; acceso por andén B.
+Activo	Sí
+4. Condiciones comerciales
+Campo	Valor
+Días crédito	30
+Límite crédito	750000.00
+Moneda preferida	MXN
+Forma pago	transferencia
+Uso CFDI	G03
+Requiere OC	No
+Requiere cita	Sí
+Bloqueado crédito	No
+5. Transportista (propio)
+Campo	Valor
+Nombre / razón social	Transportes Propios Golfo SA de CV
+Nombre comercial	TPG Flota
+RFC	TPG900101XYZ
+Tipo transportista	propio
+Tipo persona	moral
+Teléfono	2295550200
+Email	operaciones@tpgflota.demo
+Dirección fiscal	Zona portuaria Lote 12, Veracruz, Ver.
+Ciudad	Veracruz
+Estado	Veracruz
+País	México
+C.P.	91700
+Estatus	activo
+Activo	Sí
+6. Contacto transportista
+Campo	Valor
+Nombre	Luis Ortega
+Puesto	Coordinador de flota
+Teléfono	2295550201
+Email	lortega@tpgflota.demo
+Principal	Sí
+7. Documento transportista
+Campo	Valor
+Tipo	permiso_sct
+Número	SCT-AUT-2024-TPG-0098
+Estatus documento	vigente
+Observaciones	Demo semilla
+8. Tarifa de venta (catálogo)
+Campo	Valor
+Nombre	Federal Veracruz-Villahermosa tracto general (propio)
+Tipo operación	propio
+Ámbito	federal
+Modalidad	mixta
+Origen	Veracruz
+Destino	Villahermosa
+Tipo unidad	tractocamion
+Tipo carga	general
+Tarifa base	6200.00
+Tarifa km	36.5000
+Tarifa kg / ton / hora / día	0
+Recargo mínimo	950.00
+% utilidad	0.18
+% riesgo	0.02
+Resto % (urgencia, retorno vacío, carga especial)	0
+Moneda	MXN
+Activo	Sí
+(La cotización debe usar los mismos origen/destino que la tarifa: Veracruz y Villahermosa.)
+
+9. Tarifa de compra (transportista propio)
+Campo	Valor
+Transportista	TPG Flota (el propio)
+Tipo transportista	propio
+Nombre	Compra federal Ver-Vhsa tracto (propio)
+Ámbito	federal
+Modalidad	mixta
+Origen	Veracruz
+Destino	Villahermosa
+Tipo unidad	tractocamion
+Tipo carga	general
+Tarifa base	4100.00
+Tarifa km	24.0000
+Recargo mínimo	600.00
+Moneda	MXN
+Activo	Sí
+10. Viaje
+Campo	Valor
+Código viaje	VIA-DEMO-VVER-VHS-001
+Descripción	Carga general federal Veracruz, Ver. -> Villahermosa, Tab.
+Origen	Veracruz
+Destino	Villahermosa
+Fecha/hora salida	2026-04-14 06:00 (hora local; en API suele ir con zona, p. ej. -06:00)
+Llegada estimada	2026-04-15 08:00
+Estado	planificado
+Km estimados	518
+Notas	Ruta federal por carretera 180 / corredor sureste (demo).
+11. Cotización de flete (venta)
+Campo	Valor
+Cliente	DistriGolfo
+Tipo operación	propio
+Ámbito	federal
+Origen	Veracruz
+Destino	Villahermosa
+Tipo unidad	tractocamion
+Tipo carga	general
+Distancia km	518
+Peso kg	15000
+Horas / días servicio	0
+Urgencia	No
+Retorno vacío	No
+% riesgo extra	0
+Recargos adicionales	0
+Flujo: Guardar cotización → Aceptar → Convertir a flete con los datos de abajo.
+
+12. Conversión a flete
+Campo	Valor
+Código flete	FLT-DEMO-VVER-VHS-001
+Transportista	TPG Flota
+Viaje	VIA-DEMO-VVER-VHS-001
+Descripción carga	Productos de carga general emplayados, 15 t.
+Bultos	24
+Volumen m³	62.00
+Notas	Demo sistema SIFE-MXN — federal.
+Luego deberías confirmar el flete si tu pantalla lo pide (en el demo queda confirmado).
+
+13. Orden de servicio (desde cotización)
+Tras convertir, crear orden desde la cotización (debe quedar convertida y con cliente).
+
+Campo	Valor
+Cotización	COT-00001 (o el folio que genere el sistema)
+Fecha programada	Igual que salida del viaje (2026-04-14 06:00)
+Observaciones	OS demo federal Veracruz-Villahermosa.
+(Origen, destino, precio, etc. suelen venir de la cotización.)
+
+14. Operador
+Campo	Valor
+Transportista	TPG Flota
+Nombre / apellidos	Carlos / Ramírez / Nolasco
+Fecha nacimiento	1988-07-22
+CURP	RANX880722HVZMLS08
+RFC	RANX880722
+NSS	15975348620
+Estado civil	casado
+Tipo sangre	O+
+Licencia	VER9010151H1
+Tipo licencia	Federal
+Vigencia licencia	2029-12-31
+Estatus documental	completo
+Teléfono	2295550300
+Domicilio	Calle Sur 88, Centro, Veracruz, Ver., CP 91700
+Correo	c.ramirez.demo@mail.test
+Tipos unidad	tractocamion
+15. Unidad
+Campo	Valor
+Transportista	TPG Flota
+Económico	TPG-TR-088
+Placas	82-AB-12-CD
+Tipo propiedad	propio
+Estatus documental	vigente
+Descripción	Tractocamión 6x4 federal
+Activo	Sí
+Vigencia permiso SCT	2027-06-30
+Vigencia seguro	2026-12-31
+16. Asignación
+Campo	Valor
+Operador	Carlos Ramírez
+Unidad	TPG-TR-088
+Viaje	VIA-DEMO-VVER-VHS-001
+Fecha salida	2026-04-14 06:00
+Fecha regreso	2026-04-16 18:00 (ejemplo)
+Km inicial	198450.00
+Rendimiento combustible	2.65
+17. Despacho
+Campo	Valor
+Asignación	la creada
+Flete	FLT-DEMO-VVER-VHS-001
+Salida programada	2026-04-14 06:00
+Observaciones tránsito	Ruta federal; peajes casetas 180.
+Salida real: ~25 min después de la programada; km salida 198450; observación: “Salida CEDIS Veracruz; sellos OK.”
+
+Evento: tipo checkpoint, ubicación “Coatzacoalcos, Ver.”, descripción sin incidencias.
+
+Entrega: evidencia URL de ejemplo, firma “Ing. Pedro Castillo — Almacén central”, observaciones de recepción.
+
+Cierre: km llegada 198968, observaciones de cierre operativo.
+
+18. Gastos de viaje
+#	Tipo	Monto	Fecha	Ref.
+1	caseta	2840.00	2026-04-14	CAS-180-001
+2	diesel	11200.00	2026-04-14	TICK-DIE-9981
+19. Factura (objetivo de validación)
+Valores esperados si todo cuadra con tarifa y flete (como en el archivo generado):
+
+Campo	Valor esperado
+Serie	A
+Estatus	emitida (administrativa)
+Timbrada	No (demo)
+Concepto	Servicio de flete FLT-DEMO-VVER-VHS-001 · Veracruz — Villahermosa
+Referencia	FLT-DEMO-VVER-VHS-001
+Moneda	MXN
+Fecha emisión	2026-04-16
+Vencimiento	2026-05-16
+Forma pago	03
+Método pago	PUE
+Uso CFDI	G03
+Subtotal	31268.40
+IVA 16%	5002.94
+Total	36271.34
+Si al generar desde flete los montos difieren, revisa que viaje y cotización usen origen/destino Veracruz / Villahermosa (igual que la tarifa) y que el flete tenga precio de venta alineado con la cotización.
+
+Cómo validar rápido
+Arranca la API y la web.
+Captura en el orden de arriba o ejecuta python scripts\seed_demo_veracruz_villahermosa.py y compara pantalla por pantalla con esta lista.
+Abre scripts\factura_demo_veracruz_villahermosa.txt tras el seed y compáralo con la factura en el sistema.
+Si en algún paso el sistema muestra otro folio (COT/OS/FAC), es normal: solo asegúrate de enlazar cotización → flete → orden → despacho → factura con los mismos códigos (FLT-DEMO-VVER-VHS-001, etc.).

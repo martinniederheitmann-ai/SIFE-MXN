@@ -1,0 +1,253 @@
+
+hazme un simulacro con nombres y datos que se deben capturar en el sistema Sife-mxn esto debe ser desde principio a fin.
+
+Aquí tienes un simulacro único (nombres y datos ficticios) para capturar en SIFE-MXN de principio a fin, en el orden en que conviene registrar la información. Los ID entre corchetes son los que el sistema asigna al guardar: en pantalla eliges el registro en cada combo.
+
+Contexto del caso
+Embarcador: comercio de abarrotes en Veracruz.
+Ruta: Veracruz (Ver.) → Puebla (Pue.), ~300 km.
+Unidad: torton, carga general, ~12 ton.
+Figura: cliente paga a tu empresa; tú contratas a un transportista subcontratado.
+
+1. Clientes → Nuevo cliente
+Campo	Valor simulacro
+Razón social	Abarrotera Peninsular SA de CV
+Nombre comercial	Peninsular Express
+Tipo cliente	embarcador
+RFC	APE850312XY1
+Sector	Comercio mayorista abarrotes
+Origen prospecto	referido
+Email general	compras@peninsular-express.mx
+Teléfono general	2295551000
+Sitio web	(vacío o www.ejemplo-peninsular.mx)
+Domicilio fiscal	Av. Universidad 450, Col. Costa Verde, 94294 Veracruz, Ver., México
+Notas operativas	Cita obligatoria en almacén; ventana de descarga 9:00–15:00
+Notas comerciales	Contrato marco 2026; pedido mínimo 10 ton
+Cliente activo	Sí
+Guardar → anota ID_CLIENTE (ej. 12).
+
+2. Clientes → Contactos (subopción Contactos)
+Con Cliente = Peninsular:
+
+Campo	Valor
+Nombre	Laura Méndez Ruiz
+Área	tráfico
+Puesto	Coordinadora de abastecimiento
+Email	l.mendez@peninsular-express.mx
+Teléfono	2295551001
+Extensión	103
+Celular	2291112233
+Contacto principal
+	Sí
+Contacto activo	Sí
+3. Clientes → Domicilios (subopción Domicilios)
+Campo	Valor
+Cliente	Peninsular
+Tipo domicilio	carga
+Nombre sede	CEDIS Veracruz Norte
+Dirección completa	Carretera Xalapa-Veracruz Km 8.5, bodega 4, 91600 Veracruz, Ver.
+Municipio	Veracruz
+Estado	Veracruz
+Código postal	91600
+Horario carga	Lun–Sáb 8:00–16:00
+Horario descarga	Mismo
+Instrucciones acceso	Presentar orden de carga en caseta; usar andén 2
+Domicilio activo	Sí
+
+4. Clientes → Condiciones comerciales (subopción Condiciones)
+Campo	Valor
+Cliente	Peninsular
+Días crédito	15
+Límite crédito	500000.00
+Moneda preferida	MXN
+Forma pago	transferencia
+Uso CFDI	G03
+Requiere OC	Sí
+Requiere cita	No
+Bloqueado por crédito	No
+Observaciones crédito	Revisión mensual de línea
+
+5. Transportistas → Nuevo transportista
+Campo	Valor
+Razón social	Transportes Occidente del Golfo SA de CV
+Nombre comercial	TOG Fleteros
+Tipo transportista	subcontratado
+Tipo persona	moral
+Estatus	activo
+RFC	TOG900618R45
+CURP	(vacío)
+Régimen fiscal	601
+Fecha alta	2020-06-18
+Nivel confianza	medio
+Prioridad asignación	10
+Contacto principal	Roberto Sánchez
+Teléfono general	2294447788
+Email general	operaciones@togfleteros.mx
+Sitio web	(vacío)
+Código postal	91900
+Ciudad	Veracruz
+Estado	Veracruz
+País	Mexico
+Dirección fiscal	Callejón Delfines 18, Col. Flores Magón, Veracruz, Ver.
+Dirección operativa	Patio carretera 180, salida 8, Veracruz
+Notas operativas	Confirma disponibilidad con 24 h de anticipación
+Notas comerciales	Tarifas negociadas por corredor Ver–Pue
+En blacklist	No
+Transportista activo	Sí
+Guardar → ID_TRANSPORTISTA.
+
+6. Tarifas → Nueva tarifa de flete (opcional pero útil para cotizar)
+Campo	Valor
+Nombre tarifa	Ver–Pue torton general 2026
+Moneda	MXN
+Tipo operación (perfil venta)	subcontratado
+Origen	Veracruz, Ver.
+Destino	Puebla, Pue.
+Tipo unidad	torton
+Tipo carga	general
+Tarifa base	11800.00
+Tarifa por km	27.50
+Tarifa por kg	0
+Recargo mínimo	0
+Vigencia inicio	2026-01-01
+Vigencia fin	2026-12-31
+Tarifa activa	Sí
+
+7. Tarifas de compra → Nueva tarifa de compra (costo al transportista)
+Campo	Valor
+Transportista	TOG Fleteros
+Nombre tarifa	Compra Ver–Pue torton
+Tipo transportista	subcontratado
+Ámbito	federal
+Modalidad cobro	por_km (o mixta según política)
+Origen	Veracruz, Ver.
+Destino	Puebla, Pue.
+Tipo unidad	torton
+Tipo carga	general
+Tarifa base	0
+Tarifa km	21.00
+(otros componentes)	0
+Recargo mínimo	0
+Días crédito	0
+Moneda	MXN
+Vigencia inicio / fin	2026-01-01 / 2026-12-31
+Observaciones	Incluye peajes aproximados en ruta
+Tarifa activa	Sí
+
+8. Viajes → Nuevo viaje
+Campo	Valor
+Código	VZ-PUE-20260410-01
+Estado	planificado
+Descripción	Abarrotes consolidado Veracruz → Puebla
+Origen	Veracruz, Ver.
+Destino	Puebla, Pue.
+Fecha salida	2026-04-10 06:00 (datetime-local)
+Llegada estimada	2026-04-10 17:00
+Kilómetros estimados	300
+Notas	Ruta por autopista; verificar cita en destino
+Guardar → ID_VIAJE.
+
+9. Fletes → Nuevo flete
+Campo	Valor
+Código flete	FLT-PEN-20260410-001
+Estado	confirmado
+Tipo operación	subcontratado
+Método cálculo	manual (o tarifa si probaste cotización)
+Moneda	MXN
+Cliente	Abarrotera Peninsular
+Transportista	TOG Fleteros
+Viaje	VZ-PUE-20260410-01
+Tipo unidad	torton
+Tipo carga	general
+Descripción de carga	18 pallets abarrotes surtido, estiba estándar
+Peso kg	11800
+Volumen m3	72
+Número bultos	18
+Distancia km	300
+Precio venta	12800.00
+Costo transporte estimado	9800.00
+Costo real	(vacío hasta gastos)
+Notas	OC interna 2026-0410-778; contacto Laura Méndez
+Puedes usar Cotizar venta / Cotizar compra si ya están las tarifas.
+
+Guardar → ID_FLETE.
+
+10. Gastos de viaje → Nuevo gasto (una o varias líneas)
+Ejemplo de tres capturas reales:
+
+#	Flete	Categoría	Monto	Fecha	Referencia	Descripción
+1	FLT-PEN-…	combustible	4150.00	2026-04-10	Ticket 99221	Diesel estación km 45
+2	FLT-PEN-…	peajes	1920.00	2026-04-10	TAG / casetas	Autopista
+3	FLT-PEN-…	viaticos	450.00	2026-04-10	—	Alimentos operador
+Luego en Presupuesto y liquidación: mismo flete → Generar presupuesto → Ver liquidación.
+
+11. Facturas → Nueva factura
+Campo	Valor
+Serie	A
+Fecha emisión	2026-04-12
+Fecha vencimiento	2026-04-27
+
+
+
+Cliente	Peninsular
+Flete	FLT-PEN-20260410-001
+Orden servicio	(vacío)
+Concepto	Servicio de flete Veracruz–Puebla carga general OC 2026-0410-778
+Referencia	OC-2026-0410-778
+Moneda	MXN
+Subtotal	12800.00
+IVA %	0.16
+Retención	0
+Total / saldo	(según cálculo automático)
+Forma pago	transferencia
+Método pago	PUE
+Uso CFDI	G03
+Estatus	borrador (o emitida)
+Timbrada	No (hasta CFDI real)
+Observaciones	Incluye flete del 10/04/2026
+Opcional: Autollenar desde flete si ya ligaste cliente y flete.
+
+12. Operadores → Nuevo operador (si asignas chofer en sistema)
+Datos de ejemplo (ajusta CURP/RFC/NSS a formato válido real en captura):
+
+Transportista: TOG
+Nombre Carlos, apellidos Hernández López
+Fecha nacimiento, CURP, RFC, NSS, licencia federal, vigencia, domicilio completo, teléfonos, correo, etc. según el formulario (todos los campos obligatorios que marque la UI).
+Guardar → ID_OPERADOR.
+
+13. Unidades → Nueva unidad
+Campo	Valor
+Transportista	TOG
+Tipo propiedad	tercero
+Estatus documental	vigente
+Económico	TG-205
+Placas	93-HA-88
+Descripción	Torton 12 ton 6 ejes
+Detalle	Permiso SCT y póliza RC vigentes
+Unidad activa	Sí
+Guardar → ID_UNIDAD.
+
+14. Asignaciones → Nueva asignación
+Campo	Valor
+Operador	Carlos Hernández
+Unidad	TG-205
+Viaje	VZ-PUE-20260410-01
+Fecha salida	2026-04-10 05:45
+Fecha regreso	2026-04-10 21:00
+Km inicial	412800
+Km final	413100
+Rendimiento combustible	3.1
+15. Despachos → Nuevo despacho
+Campo	Valor
+Asignación	(la recién creada)
+Flete	FLT-PEN-20260410-001
+Salida programada	2026-04-10 06:00
+Observaciones tránsito	Confirmar descarga en Puebla con Laura Méndez
+16. Seguimiento (página Seguimiento)
+En orden típico: Registrar salida → Evento en ruta (si aplica) → Entrega → Cierre (con km y datos que pida cada formulario). Usa el despacho y datos reales de hora/km.
+
+Resumen del flujo
+Catálogo comercial: cliente (+ contacto, domicilio, condiciones) → transportista (+ tarifa compra opcional) → tarifa venta opcional → viaje → flete → gastos + liquidación → factura → operador + unidad → asignación → despacho → seguimiento hasta cierre.
+
+Este es el simulacro completo con nombres y datos alineados a lo que debes capturar en SIFE-MXN de principio a fin.
+

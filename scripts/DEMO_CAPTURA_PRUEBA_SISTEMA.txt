@@ -1,0 +1,309 @@
+================================================================================
+SIFE-MXN — GUION DETALLADO PARA CAPTURA DE PANTALLA (DE PRINCIPIO A FIN)
+================================================================================
+Versión alineada al panel web en la ruta /ui (menú lateral, pestañas y botones
+tal como aparecen en la aplicación). Use este documento para grabar un video,
+hacer una prueba guiada o validar que todos los módulos cargan con datos demo.
+
+--------------------------------------------------------------------------------
+0. QUÉ VA A MOSTRAR LA GRABACIÓN
+--------------------------------------------------------------------------------
+- Navegador apuntando a:  http://127.0.0.1:8000/ui  (o la URL base de su entorno).
+- Barra superior del panel: título del módulo y texto "La API key se usa en
+  segundo plano desde .env".
+- Banner: "Modo guiado" — una sola sección a la vez.
+- Menú lateral izquierdo con tres grupos:
+    General
+      · Inicio — "Resumen rapido y accesos"
+    Catalogos
+      · Clientes — "Alta y listado"
+      · Transportistas — "Proveedores de transporte"
+      · Viajes — "Planeacion"
+      · Fletes — "Costo y vinculacion"
+      · Facturas — "Simulacion administrativa de cobro"
+      · Tarifas — "Reglas de cotizacion"
+      · Tarifas compra — "Compra negociada por transportista"
+      · Operadores — "Choferes de transporte"
+      · Unidades — "Vehiculos y economicos"
+    Operacion
+      · Asignaciones — "Operador + unidad + viaje"
+      · Gastos viaje — "Costos reales por flete"
+      · Despachos — "Programacion operativa"
+      · Manual cumplimiento — enlace que abre otra pestaña (/manual/cumplimiento)
+      · Seguimiento — "Salida, entrega, cierre"
+- Nota al pie del menú: enlace a Swagger /docs como respaldo.
+
+IMPORTANTE — Pantallas en /ui (actualizado):
+- **Cotizaciones de flete guardadas:** no tienen menú propio; el folio de
+  cotización se ve en **Fletes → Ordenes de servicio** (columna Cotizacion) o
+  en API /docs.
+- **Ordenes de servicio:** SÍ tienen pestaña en el panel: **Fletes → Ordenes
+  de servicio** (consulta, filtros, Ver detalle). Los datos nacen en BD por
+  semilla o API; el capturista solo los consulta ahí.
+- Vínculo opcional en **Facturas** (ID de orden o botón "Aplicar folio").
+- Manual de capturista: scripts/MANUAL_CAPTURISTA_ORDENES_SERVICIO_Y_FACTURA.txt
+
+--------------------------------------------------------------------------------
+1. PREPARACIÓN TÉCNICA (ANTES DE GRABAR)
+--------------------------------------------------------------------------------
+1.1 Entorno
+- Servidor API en marcha (ej. uvicorn en 127.0.0.1:8000).
+- Base MySQL con migraciones aplicadas.
+- Archivo .env con credenciales y misma API key que usa el panel.
+
+1.2 Datos de prueba (elegir UNA opción)
+  A) Demo completa Veracruz → Villahermosa (recomendada para recorrer todo):
+        python scripts/seed_demo_veracruz_villahermosa.py
+     Genera cliente, transportista, tarifas, viaje, cotización, flete, orden de
+     servicio, operador, unidad, asignación, despacho, eventos de seguimiento,
+     gastos y factura. Al final imprime resumen y escribe:
+        scripts/factura_demo_veracruz_villahermosa.txt
+     Si la semilla falla por RFC o códigos duplicados, use BD limpia o elimine
+     registros demo previos.
+
+  B) Sin semilla: puede seguir el mismo orden de menú pero creando registros a
+     mano (más largo para video).
+
+1.3 Consejos de grabación
+- Resolución estable (ej. 1920×1080), zoom del navegador 100 %.
+- Ctrl+F5 al iniciar para evitar caché viejo del panel.
+- Oculte bookmarks sensibles o use ventana de incógnito si graba URL públicas.
+- Texto sugerido inicial (locución): presentar "Panel operativo SIFE-MXN,
+  prueba de principio a fin sobre catálogos, operación y facturación interna".
+
+--------------------------------------------------------------------------------
+2. SECUENCIA DETALLADA EN EL PANEL (ORDEN LÓGICO DE NARRACIÓN)
+--------------------------------------------------------------------------------
+Use este orden para contar una historia coherente: catálogo → operación → cierre
+financiero. Los nombres entre comillas son textos visibles en pantalla.
+
+--- PASO 2.1 — INICIO ---
+- Clic en el menú: "Inicio" (grupo General).
+- Muestre la tarjeta "Como usarlo" con la lista numerada (catálogos → asignación
+  → despacho → seguimiento).
+- Opcional: tarjeta "Estado actual" y enlace a /docs.
+
+--- PASO 2.2 — CLIENTES ---
+- Menú: "Clientes".
+- Subpestañas: "Nuevo cliente" | "Consultar y editar" | "Contactos" | "Domicilios"
+  | "Condiciones" | "Manual".
+- Para demo semilla Veracruz: vaya a "Consultar y editar". En el filtro de
+  búsqueda escriba: Distribuidora del Golfo  o  DGO850312ABC.
+- Explique: tabla de resultados, botón "Editar" si desea mostrar el panel
+  inferior "Editar cliente".
+- Opcional: pestaña "Manual" o botón "Abrir manual" para mostrar documentación
+  embebida.
+
+--- PASO 2.3 — TRANSPORTISTAS ---
+- Menú: "Transportistas".
+- Subpestañas típicas: "Nuevo transportista" | "Consultar y editar" | "Contactos"
+  | "Documentos" | "Manual" (según versión).
+- Demo semilla: buscar "Transportes Propios Golfo" o RFC TPG900101XYZ.
+
+--- PASO 2.4 — TARIFAS (VENTA) ---
+- Menú: "Tarifas" (subtítulo: "Subopciones de tarifas").
+- Pestañas: "Nueva tarifa" | "Consultar y editar" | "Manual".
+- Demo semilla: en consulta, buscar texto que contenga
+  "Federal Veracruz-Villahermosa tracto general (propio)".
+- Mencione que aquí se definen ámbito, modalidad, base, km, porcentajes y que
+  encajan con la cotización en flete.
+
+--- PASO 2.5 — TARIFAS COMPRA ---
+- Menú: "Tarifas compra".
+- Pestañas análogas (Nueva / Consultar / Manual).
+- Demo semilla: buscar "Compra federal Ver-Vhsa tracto (propio)".
+
+--- PASO 2.6 — VIAJES ---
+- Menú: "Viajes".
+- Pestañas: "Nuevo viaje" | "Consultar y editar" | "Manual".
+- Demo semilla: código de viaje  VIA-DEMO-VVER-VHS-001  (origen Veracruz,
+  destino Villahermosa).
+
+--- PASO 2.7 — FLETES ---
+- Menú: "Fletes".
+- Pestañas: "Nuevo flete" | "Consultar y editar" | "Ordenes de servicio" | "Manual".
+- En "Nuevo flete" puede mencionar: código, estado, tipo operación, método
+  cálculo (manual / tarifa / motor), cliente, transportista, viaje, montos,
+  botones de cotización si los muestra su build (texto de ayuda bajo el form).
+- Demo semilla: en consulta buscar código  FLT-DEMO-VVER-VHS-001 .
+  Verifique estado (ej. entregado), precio y método tarifa si aplica.
+- Para la **orden de servicio** del mismo demo: pestaña **Ordenes de servicio**
+  (ver sección 8 de este documento).
+
+--- PASO 2.8 — FACTURAS ---
+- Menú: "Facturas".
+- Pestañas: "Nueva factura" | "Consultar y editar" | "Manual".
+- En "Nueva factura" muestre: cliente, flete, orden de servicio (opcional),
+  montos, y botones "Autollenar desde flete", "Vista previa (tarifa)",
+  "Generar automático desde flete", "Guardar factura".
+- En "Consultar y editar": filtros "Buscar", "Cliente", "Estatus", botones
+  "Aplicar filtro" y "Limpiar"; tabla; "Editar" abre panel de edición.
+- Demo semilla: filtrar por cliente Distribuidora del Golfo o por texto del
+  folio/concepto; compare totales con scripts/factura_demo_veracruz_villahermosa.txt
+
+--- PASO 2.9 — OPERADORES ---
+- Menú: "Operadores".
+- "Nuevo operador" | "Consultar" | "Manual".
+- Demo semilla: buscar "Ramirez" o CURP de la semilla; transportista TPG.
+- Los valores exactos del operador demo están en la **sección 9** (tabla de
+  referencia); en pantalla solo aparecen los campos que el formulario de
+  consulta/listado muestre (el resto al abrir/editar si su versión lo permite).
+
+--- PASO 2.10 — UNIDADES ---
+- Menú: "Unidades".
+- "Nueva unidad" | "Consultar y editar" | "Manual".
+- Demo semilla: económico  TPG-TR-088  o placas  82-AB-12-CD .
+
+--- PASO 2.11 — ASIGNACIONES ---
+- Menú: "Asignaciones".
+- "Nueva asignación" | "Consultar y editar" | "Manual".
+- Explique: selección de operador, unidad, viaje, fechas, km.
+- Demo semilla: debe existir una fila que una al operador/unidad con el viaje
+  demo (revisar tabla tras filtrar).
+
+--- PASO 2.12 — DESPACHOS ---
+- Menú: "Despachos".
+- "Nuevo despacho" | "Consultar y editar" | "Manual".
+- Formulario alto: selector "Asignacion", "Flete", "Salida programada",
+  "Observaciones de transito", botón "Crear despacho".
+- Listado: filtros de búsqueda y estatus; acciones según su versión (editar).
+
+--- PASO 2.13 — GASTOS VIAJE ---
+- Menú: "Gastos viaje".
+- "Nuevo gasto" | "Consultar y editar" | "Manual".
+- Formulario: "Flete", "Categoría de gasto" (lista: Combustible, Peajes, etc.),
+  "Monto", "Fecha gasto", "Referencia", "Comprobante URL", descripción.
+- Demo semilla: seleccionar flete FLT-DEMO-VVER-VHS-001 y mostrar gastos
+  caseta/diesel o agregar uno de prueba si su política lo permite.
+
+--- PASO 2.14 — SEGUIMIENTO ---
+- Menú: "Seguimiento".
+- Pestañas horizontales:
+    "Registrar salida" | "Evento en ruta" | "Registrar entrega" |
+    "Cerrar despacho" | "Cancelar despacho" | "Manual"
+- Puede explicar el flujo sin repetir acciones ya hechas por la semilla, o
+  mostrar los formularios vacíos y el selector de "Despacho".
+- Textos útiles en pantalla: "Guardar salida", "Guardar evento", "Guardar entrega",
+  "Cerrar despacho", "Cancelar despacho".
+
+--- PASO 2.15 — MANUAL CUMPLIMIENTO (OPCIONAL) ---
+- Clic en enlace lateral "Manual cumplimiento" — "Legal MX (imprimir PDF)".
+- Se abre nueva pestaña: ideal para decir que la documentación legal es aparte
+  del panel operativo.
+
+--- PASO 2.16 — CIERRE ---
+- Vuelta a "Inicio" o a /docs.
+- Mensaje de cierre sugerido: "Recorrido completo del panel SIFE-MXN: catálogos,
+  flete y factura administrativa; operación con asignación, despacho, gastos y
+  seguimiento. La factura mostrada es registro interno, no CFDI del SAT."
+
+--------------------------------------------------------------------------------
+3. TABLA DE REFERENCIA RÁPIDA (DEMO SEMILLA VERACRUZ–VILLAHERMOSA)
+--------------------------------------------------------------------------------
+Cliente (razón social):     Distribuidora del Golfo SA de CV
+RFC cliente:                DGO850312ABC
+Transportista (nombre):     Transportes Propios Golfo SA de CV
+Flete (código):             FLT-DEMO-VVER-VHS-001
+Viaje (código):             VIA-DEMO-VVER-VHS-001
+Cotización (folio típico):  COT-00001 si es la primera en BD vacía
+Unidad económico:           TPG-TR-088
+Importes de factura:        Ver archivo generado:
+                             scripts/factura_demo_veracruz_villahermosa.txt
+
+Los apartados 8 y 9 amplían orden de servicio y operador con valores de la
+semilla y dónde grabarlos en /ui.
+
+--------------------------------------------------------------------------------
+8. ORDEN DE SERVICIO (REFERENCIA DEMO) — VALORES Y DÓNDE CAPTURAR
+--------------------------------------------------------------------------------
+Estos datos los genera scripts/seed_demo_veracruz_villahermosa.py en la base de
+datos. El folio real lo asigna el sistema (puede no coincidir con un ejemplo
+fijo si ya había otras ordenes).
+
+Campo                         | Valor (referencia semilla)
+-----------------------------+--------------------------------------------------
+Cotización                   | La aceptada (folio que genere el sistema; típico
+                             | COT-00001 en BD vacía)
+Fecha programada             | Alineada a la salida del viaje demo (2026-04-14
+                             | 06:00 hora local en semilla; en API aparece ISO)
+Observaciones                | OS demo federal Veracruz-Villahermosa.
+
+DÓNDE VERLO EN EL PANEL (/ui) — pasos para la grabación:
+  1) Menú **Fletes** → pestaña **Ordenes de servicio** (no "Consultar y editar"
+     de fletes; es la tercera pestaña horizontal).
+  2) En la tabla: columnas Folio, Cliente, Estatus, **Cotizacion**, Flete,
+     Fecha prog., Precio comp.
+  3) Pulse **Ver detalle** en la fila de la orden demo: en el texto del panel
+     aparecen observaciones, fechas, vínculos a cotización/flete/viaje y el
+     **ID numérico** de la orden (útil si luego factura por ID).
+  4) Opcional: **Facturas → Nueva factura** → campo orden de servicio o
+     **Aplicar folio** con el folio OS… (ver manual de capturista).
+
+Si busca solo el texto "OS demo federal…": está en el **detalle** de la orden,
+no en una fila de la tabla principal.
+
+--------------------------------------------------------------------------------
+9. OPERADOR (REFERENCIA DEMO) — VALORES Y DÓNDE CAPTURAR
+--------------------------------------------------------------------------------
+Misma semilla Veracruz–Villahermosa. Transportista comercial en pantalla:
+**TPG Flota** (razón social completa en catálogo: Transportes Propios Golfo…).
+
+Campo              | Valor
+-------------------+--------------------------------------------------
+Transportista      | TPG Flota (vinculado al registro de transportista demo)
+Nombre / apellidos | Carlos / Ramírez / Nolasco
+Fecha nacimiento   | 1988-07-22
+CURP               | RANX880722HVZMLS08
+RFC                | RANX880722
+NSS                | 15975348620
+Estado civil       | casado
+Tipo sangre        | O+
+Licencia           | VER9010151H1
+Tipo licencia      | Federal
+Vigencia licencia  | 2029-12-31
+Estatus documental | completo
+Teléfono           | 2295550300
+Domicilio          | Calle Sur 88, Centro, Veracruz, Ver., 91700
+Correo             | c.ramirez.demo@mail.test
+Tipos unidad       | tractocamion
+Tipo contratación  | planta
+Años experiencia   | 10
+
+DÓNDE VERLO EN EL PANEL (/ui):
+  1) Menú **Operadores** → **Consultar** (o la pestaña de listado).
+  2) En **Buscar rápido** escriba: Ramirez  o  RANX880722  o parte del CURP.
+  3) La tabla lista filas resumidas; si su pantalla tiene **Editar**, puede
+     abrir el formulario y contrastar campo por campo con la tabla de arriba.
+  4) En **Asignaciones**, la fila demo une este operador con unidad y viaje
+     (misma historia operativa).
+
+Nota: el listado de operadores no muestra todos los campos a la vez; las
+secciones 8 y 9 sirven de **guion de datos** (voz en off o comprobacion) aunque
+la UI sea mas breve.
+
+--------------------------------------------------------------------------------
+10. ALTERNATIVAS SIN GRABAR TODA LA UI (AUTOMATIZACIÓN API)
+--------------------------------------------------------------------------------
+- Demo cadena con factura automática (tarifa + preview + generar):
+    set SIFE_API_BASE=http://127.0.0.1:8000
+    set SIFE_API_KEY=su-api-key
+    python scripts/demo_flujo_factura_automatico.py
+
+- Demo cadena simple (sin tarifa automática):
+    python scripts/demo_flujo_factura.py
+
+- Peticiones manuales en VS Code/Cursor:
+    sife_demo_factura.http  (Demo A y Demo B documentadas al final del archivo)
+
+--------------------------------------------------------------------------------
+11. RESUMEN DE ARCHIVOS ÚTILES
+--------------------------------------------------------------------------------
+scripts/DEMO_CAPTURA_PRUEBA_SISTEMA.txt     → Este guion (captura pantalla /ui)
+scripts/MANUAL_CAPTURISTA_ORDENES_SERVICIO_Y_FACTURA.txt → Paso a paso capturista
+scripts/seed_demo_veracruz_villahermosa.py  → Carga datos demo completos
+scripts/factura_demo_veracruz_villahermosa.txt → Resultado esperado factura
+scripts/demo_flujo_factura_automatico.py    → Prueba API factura automática
+scripts/demo_flujo_factura.py               → Prueba API factura manual
+sife_demo_factura.http                      → REST Client
+
+================================================================================

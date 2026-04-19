@@ -1,0 +1,1 @@
+"""SIFE-MXN — aplicación FastAPI."""
