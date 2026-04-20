@@ -164,6 +164,12 @@ def _list_acciones_rows(db: Session, start_date: date, end_date: date) -> list[D
     return list(db.execute(stmt).scalars().all())
 
 
+def _week_bounds(ref: date) -> tuple[date, date]:
+    start = ref - timedelta(days=ref.weekday())
+    end = start + timedelta(days=6)
+    return start, end
+
+
 @router.get(
     "/dashboard",
     response_model=DireccionDashboardResponse,
@@ -507,6 +513,33 @@ def get_resumen_semanal(
         "embudo": dashboard.embudo.model_dump(),
         "tiempos": dashboard.tiempos.model_dump(),
     }
+
+
+@router.get("/historico-semanal", summary="Tendencia y semáforo histórico semanal")
+def get_historico_semanal(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_jwt),
+    semanas: int = Query(default=8, ge=2, le=26),
+) -> dict:
+    _require_direccion_or_admin(user)
+    today = date.today()
+    current_start, _ = _week_bounds(today)
+    rows: list[dict] = []
+    for i in range(semanas - 1, -1, -1):
+        week_start = current_start - timedelta(days=7 * i)
+        week_end = week_start + timedelta(days=6)
+        dash = get_dashboard_direccion(db=db, user=user, desde=week_start, hasta=week_end)
+        rows.append(
+            {
+                "week_start": week_start,
+                "week_end": week_end,
+                "despachos_cerrados": dash.resumen.despachos_cerrados,
+                "facturas_emitidas": dash.resumen.facturas_emitidas,
+                "despacho_a_factura_pct": dash.embudo.despacho_a_factura_pct,
+                "semaforo": dash.semaforo.model_dump(),
+            }
+        )
+    return {"semanas": semanas, "items": rows}
 
 
 @router.get("/export/dashboard.csv", summary="Exportar dashboard de dirección a CSV")

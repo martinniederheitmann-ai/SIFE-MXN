@@ -5675,6 +5675,12 @@ _UI_TEMPLATE = """<!doctype html>
             <p id="direccion-resumen-texto" class="hint">Sin datos aún.</p>
             <div id="direccion-riesgos-texto" class="hint"></div>
           </article>
+          <article class="card">
+            <h3>Tendencia semanal</h3>
+            <div class="hint">Últimas semanas: despachos cerrados, facturas emitidas y semáforo operativo.</div>
+            <svg id="direccion-historico-chart" viewBox="0 0 720 220" width="100%" height="220" role="img" aria-label="Tendencia semanal"></svg>
+            <div id="direccion-historico-tabla" style="overflow:auto; margin-top:10px;"></div>
+          </article>
         </div>
 
         <div class="grid" style="margin-top: 16px;">
@@ -8445,6 +8451,7 @@ _UI_TEMPLATE = """<!doctype html>
         const data = await api(`/direccion/dashboard?${q.toString()}`);
         renderDireccionDashboard(data);
         await refreshDireccionResumenSemanal();
+        await refreshDireccionHistoricoSemanal();
         await Promise.all([refreshDireccionIncidencias(), refreshDireccionAcciones()]);
         setMessage("direccion-message", `Rango consultado: ${data.desde} a ${data.hasta}.`, "ok");
       } catch (error) {
@@ -8473,6 +8480,88 @@ _UI_TEMPLATE = """<!doctype html>
       } catch (error) {
         resumenEl.textContent = "No se pudo generar el resumen semanal.";
         riesgosEl.textContent = error?.message || "";
+      }
+    }
+
+    function renderDireccionHistorico(data) {
+      const svg = document.getElementById("direccion-historico-chart");
+      const tableWrap = document.getElementById("direccion-historico-tabla");
+      const items = Array.isArray(data?.items) ? data.items : [];
+      if (!svg || !tableWrap) return;
+      if (!items.length) {
+        svg.innerHTML = "";
+        tableWrap.innerHTML = '<div class="hint">Sin histórico semanal disponible.</div>';
+        return;
+      }
+
+      const W = 720;
+      const H = 220;
+      const p = { l: 44, r: 16, t: 16, b: 32 };
+      const pw = W - p.l - p.r;
+      const ph = H - p.t - p.b;
+      const maxY = Math.max(
+        1,
+        ...items.map((x) => Number(x.despachos_cerrados || 0)),
+        ...items.map((x) => Number(x.facturas_emitidas || 0))
+      );
+      const stepX = items.length > 1 ? pw / (items.length - 1) : 0;
+      const xAt = (i) => p.l + stepX * i;
+      const yAt = (v) => p.t + (1 - Number(v || 0) / maxY) * ph;
+      const mkPath = (key) =>
+        items
+          .map((it, idx) => `${idx === 0 ? "M" : "L"} ${xAt(idx).toFixed(1)} ${yAt(it[key]).toFixed(1)}`)
+          .join(" ");
+
+      const despPath = mkPath("despachos_cerrados");
+      const facPath = mkPath("facturas_emitidas");
+      const xTicks = items
+        .map((it, idx) => {
+          const label = String(it.week_start || "").slice(5);
+          return `<text x="${xAt(idx).toFixed(1)}" y="${H - 10}" font-size="10" text-anchor="middle" fill="#64748b">${label}</text>`;
+        })
+        .join("");
+
+      svg.innerHTML = `
+        <rect x="0" y="0" width="${W}" height="${H}" fill="#ffffff"></rect>
+        <line x1="${p.l}" y1="${p.t + ph}" x2="${W - p.r}" y2="${p.t + ph}" stroke="#cbd5e1" stroke-width="1"></line>
+        <line x1="${p.l}" y1="${p.t}" x2="${p.l}" y2="${p.t + ph}" stroke="#cbd5e1" stroke-width="1"></line>
+        <path d="${despPath}" fill="none" stroke="#0b6ead" stroke-width="2.5"></path>
+        <path d="${facPath}" fill="none" stroke="#0f766e" stroke-width="2.5"></path>
+        <text x="${p.l}" y="${p.t - 4}" font-size="10" fill="#64748b">Volumen semanal (máx ${maxY})</text>
+        <text x="${W - p.r - 170}" y="${p.t + 12}" font-size="10" fill="#0b6ead">● Despachos cerrados</text>
+        <text x="${W - p.r - 170}" y="${p.t + 26}" font-size="10" fill="#0f766e">● Facturas emitidas</text>
+        ${xTicks}
+      `;
+
+      const rows = items
+        .map(
+          (it) => `
+            <tr>
+              <td>${escapeHtml(it.week_start || "")}</td>
+              <td>${escapeHtml(it.week_end || "")}</td>
+              <td>${Number(it.despachos_cerrados || 0)}</td>
+              <td>${Number(it.facturas_emitidas || 0)}</td>
+              <td>${Number(it.despacho_a_factura_pct || 0).toFixed(2)}%</td>
+              <td>${semaforoLabel(it?.semaforo?.operacion)}</td>
+              <td>${semaforoLabel(it?.semaforo?.cobranza)}</td>
+            </tr>
+          `
+        )
+        .join("");
+      tableWrap.innerHTML = `
+        <table>
+          <thead><tr><th>Semana inicio</th><th>Semana fin</th><th>Despachos cerrados</th><th>Facturas emitidas</th><th>Despacho->Factura</th><th>Operación</th><th>Cobranza</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    async function refreshDireccionHistoricoSemanal() {
+      try {
+        const data = await api("/direccion/historico-semanal?semanas=8");
+        renderDireccionHistorico(data);
+      } catch (_error) {
+        renderDireccionHistorico({ items: [] });
       }
     }
 
