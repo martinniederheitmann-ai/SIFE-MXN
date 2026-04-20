@@ -241,7 +241,10 @@ def listar_eventos_despacho(
     summary="Registrar evento de despacho",
 )
 def crear_evento_despacho(
-    id_despacho: int, payload: DespachoEventoCreate, db: Session = Depends(get_db)
+    id_despacho: int,
+    payload: DespachoEventoCreate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> DespachoEventoRead:
     row = _despacho_or_404(db, id_despacho)
     if payload.tipo_evento in {TipoEventoDespacho.CHECKPOINT, TipoEventoDespacho.INCIDENCIA} and row.estatus in {
@@ -255,6 +258,15 @@ def crear_evento_despacho(
         )
         _sync_relations(db, row)
     evento = crud_despacho.create_evento(db, id_despacho, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="despacho_evento",
+        entity_id=evento.id_evento,
+        action="create",
+        after=model_to_dict(evento),
+        meta={"id_despacho": id_despacho},
+    )
     return DespachoEventoRead.model_validate(evento)
 
 

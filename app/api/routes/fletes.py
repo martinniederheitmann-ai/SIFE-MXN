@@ -154,7 +154,9 @@ def cotizar_compra_flete(
     summary="Guardar cotizacion de flete",
 )
 def guardar_cotizacion_flete(
-    payload: CotizacionFleteCreate, db: Session = Depends(get_db)
+    payload: CotizacionFleteCreate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> CotizacionFleteRead:
     result = cotizar_venta_con_tarifa(db, payload)
     row = crud_cotizacion_flete.create(
@@ -165,6 +167,14 @@ def guardar_cotizacion_flete(
             folio=crud_cotizacion_flete.next_folio(db),
             observaciones=payload.observaciones,
         ),
+    )
+    write_audit_log(
+        db,
+        request,
+        entity="cotizacion_flete",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
     )
     return CotizacionFleteRead.model_validate(row)
 
@@ -211,13 +221,26 @@ def obtener_cotizacion_flete(
 def cambiar_estatus_cotizacion_flete(
     cotizacion_id: int,
     payload: CotizacionFleteCambiarEstatus,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> CotizacionFleteRead:
+    current = _cotizacion_or_404(db, cotizacion_id)
+    before = model_to_dict(current)
     row = crud_cotizacion_flete.update_status(
         db,
-        _cotizacion_or_404(db, cotizacion_id),
+        current,
         estatus=payload.estatus,
         observaciones=payload.observaciones,
+    )
+    write_audit_log(
+        db,
+        request,
+        entity="cotizacion_flete",
+        entity_id=cotizacion_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+        meta={"campo": "estatus"},
     )
     return CotizacionFleteRead.model_validate(row)
 
@@ -230,9 +253,11 @@ def cambiar_estatus_cotizacion_flete(
 def convertir_cotizacion_a_flete(
     cotizacion_id: int,
     payload: CotizacionFleteConvertir,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> FleteRead:
     cotizacion = _cotizacion_or_404(db, cotizacion_id)
+    before_cot = model_to_dict(cotizacion)
     if cotizacion.cliente_id is None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -285,7 +310,26 @@ def convertir_cotizacion_a_flete(
             notas=payload.notas,
         ),
     )
-    crud_cotizacion_flete.mark_converted(db, cotizacion, row.id)
+    cot_updated = crud_cotizacion_flete.mark_converted(db, cotizacion, row.id)
+    write_audit_log(
+        db,
+        request,
+        entity="flete",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"cotizacion_id": cotizacion_id},
+    )
+    write_audit_log(
+        db,
+        request,
+        entity="cotizacion_flete",
+        entity_id=cotizacion_id,
+        action="convertir",
+        before=before_cot,
+        after=model_to_dict(cot_updated),
+        meta={"flete_id": row.id},
+    )
     return FleteRead.model_validate(row)
 
 

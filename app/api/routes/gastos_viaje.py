@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.services.audit import model_to_dict, write_audit_log
 from app.crud import flete as crud_flete
 from app.crud import gasto_viaje as crud_gasto_viaje
 from app.schemas.gasto_viaje import (
@@ -35,10 +36,21 @@ def _sync_flete_cost(db: Session, flete_id: int) -> None:
 
 
 @router.post("", response_model=GastoViajeRead, status_code=status.HTTP_201_CREATED, summary="Crear gasto de viaje")
-def crear_gasto_viaje(payload: GastoViajeCreate, db: Session = Depends(get_db)) -> GastoViajeRead:
+def crear_gasto_viaje(
+    payload: GastoViajeCreate, request: Request, db: Session = Depends(get_db)
+) -> GastoViajeRead:
     _flete_or_404(db, payload.flete_id)
     row = crud_gasto_viaje.create(db, payload)
     _sync_flete_cost(db, payload.flete_id)
+    write_audit_log(
+        db,
+        request,
+        entity="gasto_viaje",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"flete_id": payload.flete_id},
+    )
     return GastoViajeRead.model_validate(row)
 
 
@@ -65,17 +77,43 @@ def obtener_gasto_viaje(gasto_id: int, db: Session = Depends(get_db)) -> GastoVi
 
 @router.patch("/{gasto_id}", response_model=GastoViajeRead, summary="Actualizar gasto de viaje")
 def actualizar_gasto_viaje(
-    gasto_id: int, payload: GastoViajeUpdate, db: Session = Depends(get_db)
+    gasto_id: int,
+    payload: GastoViajeUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> GastoViajeRead:
     row = _gasto_or_404(db, gasto_id)
+    before = model_to_dict(row)
     row = crud_gasto_viaje.update(db, row, payload)
     _sync_flete_cost(db, row.flete_id)
+    write_audit_log(
+        db,
+        request,
+        entity="gasto_viaje",
+        entity_id=gasto_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+        meta={"flete_id": row.flete_id},
+    )
     return GastoViajeRead.model_validate(row)
 
 
 @router.delete("/{gasto_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar gasto de viaje")
-def eliminar_gasto_viaje(gasto_id: int, db: Session = Depends(get_db)) -> None:
+def eliminar_gasto_viaje(
+    gasto_id: int, request: Request, db: Session = Depends(get_db)
+) -> None:
     row = _gasto_or_404(db, gasto_id)
     flete_id = row.flete_id
+    before = model_to_dict(row)
     crud_gasto_viaje.delete(db, row)
     _sync_flete_cost(db, flete_id)
+    write_audit_log(
+        db,
+        request,
+        entity="gasto_viaje",
+        entity_id=gasto_id,
+        action="delete",
+        before=before,
+        meta={"flete_id": flete_id},
+    )
