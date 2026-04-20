@@ -335,6 +335,13 @@ _UI_TEMPLATE = """<!doctype html>
       margin-bottom: 2px;
     }
 
+    /* Estilo unificado para pantallas de captura: area gris + campos blancos. */
+    .capture-shell {
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+      border: 1px solid var(--line-strong);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06), 0 16px 40px rgba(15, 23, 42, 0.07);
+    }
+
     input.field-money {
       text-align: right;
       font-variant-numeric: tabular-nums;
@@ -1002,7 +1009,7 @@ _UI_TEMPLATE = """<!doctype html>
       </div>
 
       <div class="nav-group">
-        <div class="nav-title">Catalogos</div>
+        <div class="nav-title">Catalogos base</div>
         <button type="button" class="nav-button" data-page="clientes">
           Clientes
           <small>Alta y listado</small>
@@ -1015,22 +1022,6 @@ _UI_TEMPLATE = """<!doctype html>
           Viajes
           <small>Planeacion</small>
         </button>
-        <button type="button" class="nav-button" data-page="fletes">
-          Fletes
-          <small>Costo y vinculacion</small>
-        </button>
-        <button type="button" class="nav-button" data-page="facturas">
-          Facturas
-          <small>Simulacion administrativa de cobro</small>
-        </button>
-        <button type="button" class="nav-button" data-page="tarifas">
-          Tarifas
-          <small>Reglas de cotizacion</small>
-        </button>
-        <button type="button" class="nav-button" data-page="tarifas-compra">
-          Tarifas compra
-          <small>Compra negociada por transportista</small>
-        </button>
         <button type="button" class="nav-button" data-page="operadores">
           Operadores
           <small>Choferes de transporte</small>
@@ -1042,14 +1033,26 @@ _UI_TEMPLATE = """<!doctype html>
       </div>
 
       <div class="nav-group">
+        <div class="nav-title">Comercial y planeacion</div>
+        <button type="button" class="nav-button" data-page="tarifas">
+          Tarifa venta
+          <small>Reglas de cotizacion</small>
+        </button>
+        <button type="button" class="nav-button" data-page="tarifas-compra">
+          Tarifas compra
+          <small>Compra negociada por transportista</small>
+        </button>
+        <button type="button" class="nav-button" data-page="fletes">
+          Fletes
+          <small>Cotizacion, venta y ordenes de servicio</small>
+        </button>
+      </div>
+
+      <div class="nav-group">
         <div class="nav-title">Operacion</div>
         <button type="button" class="nav-button" data-page="asignaciones">
           Asignaciones
           <small>Operador + unidad + viaje</small>
-        </button>
-        <button type="button" class="nav-button" data-page="gastos">
-          Gastos viaje
-          <small>Costos reales por flete</small>
         </button>
         <button type="button" class="nav-button" data-page="despachos">
           Despachos
@@ -1067,6 +1070,18 @@ _UI_TEMPLATE = """<!doctype html>
         <button type="button" class="nav-button" data-page="seguimiento">
           Seguimiento
           <small>Salida, entrega, cierre</small>
+        </button>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-title">Cierre economico</div>
+        <button type="button" class="nav-button" data-page="gastos">
+          Gastos viaje
+          <small>Costos reales por flete</small>
+        </button>
+        <button type="button" class="nav-button" data-page="facturas">
+          Facturas
+          <small>Simulacion administrativa de cobro</small>
         </button>
       </div>
 
@@ -1113,12 +1128,12 @@ _UI_TEMPLATE = """<!doctype html>
           <article class="card">
             <h3>Como usarlo</h3>
             <ol class="summary-list">
-              <li><strong>Catalogos comerciales:</strong> clientes, transportistas, tarifas de venta y tarifas de compra (cuando apliquen).</li>
-              <li><strong>Planeacion:</strong> viajes; luego <strong>fletes</strong> (cotizar venta/compra desde el formulario si hay tarifas).</li>
-              <li><strong>Orden de servicio:</strong> en este panel suele ser <strong>consulta</strong> (Fletes → Ordenes de servicio); altas completas pueden hacerse por API (<a href="/docs">/docs</a>).</li>
-              <li><strong>Operacion:</strong> operadores, unidades, <strong>asignacion</strong> (operador + unidad + viaje), <strong>despacho</strong>.</li>
-              <li><strong>Seguimiento:</strong> salida, evento en ruta, entrega, cierre o cancelacion (registro hacia adelante).</li>
-              <li><strong>Cierre economico:</strong> gastos de viaje por flete; <strong>facturas</strong> administrativas (no timbrado SAT en este modulo).</li>
+              <li><strong>Catalogos base:</strong> clientes, transportistas, viajes, operadores y unidades.</li>
+              <li><strong>Reglas comerciales:</strong> tarifas de venta y tarifas de compra antes de cotizar.</li>
+              <li><strong>Venta y compromiso:</strong> fletes y luego <strong>Ordenes de servicio</strong> (subpestaña en Fletes).</li>
+              <li><strong>Ejecucion:</strong> asignacion (operador + unidad + viaje), despacho y seguimiento (salida a cierre).</li>
+              <li><strong>Cierre economico:</strong> gastos de viaje por flete y despues facturas administrativas.</li>
+              <li><strong>Control de acceso:</strong> usuarios y roles en Administracion (solo admin/direccion).</li>
             </ol>
             <p class="hint" style="margin:10px 0 0 0;">Lo que no se guarda con el boton correspondiente <strong>no queda en el servidor</strong> (no hay borradores automaticos en el navegador). Guarde por pasos antes de cambiar de modulo o recargar.</p>
           </article>
@@ -5647,7 +5662,7 @@ _UI_TEMPLATE = """<!doctype html>
       fletes: ["Fletes", "Nuevo flete, consulta y edicion, ordenes de servicio (subpestaña) y manual en pantalla."],
       facturas: ["Facturas", "Alta, consulta y manual en pantalla con índice y visor."],
       gastos: ["Gastos viaje", "Alta, consulta, presupuesto estimado y liquidación vs real."],
-      tarifas: ["Tarifas", "Alta, consulta y manual en pantalla con índice y visor."],
+      tarifas: ["Tarifa venta", "Alta, consulta y manual en pantalla con índice y visor."],
       "tarifas-compra": ["Tarifas compra", "Alta, consulta y manual en pantalla con índice y visor."],
       operadores: ["Operadores", "Alta, consulta con edición en panel y manual en pantalla."],
       unidades: ["Unidades", "Alta, consulta con filtros, edicion y eliminacion en panel; manual integrado."],
@@ -5814,6 +5829,33 @@ _UI_TEMPLATE = """<!doctype html>
         });
         actions.appendChild(cancelButton);
         form.dataset.cancelInstalled = "true";
+      }
+    }
+
+    function applyCaptureShellStyle() {
+      const isCaptureForm = (form) => {
+        const id = (form.id || "").trim().toLowerCase();
+        if (!id) {
+          return false;
+        }
+        if (id.includes("filter")) {
+          return false;
+        }
+        return true;
+      };
+
+      for (const form of document.querySelectorAll("form")) {
+        if (!isCaptureForm(form)) {
+          continue;
+        }
+        const shell =
+          form.closest(".toolbar") ||
+          form.closest("article.card") ||
+          form.closest(".card");
+        if (!shell || shell.classList.contains("manual-doc")) {
+          continue;
+        }
+        shell.classList.add("capture-shell");
       }
     }
 
@@ -8035,6 +8077,11 @@ _UI_TEMPLATE = """<!doctype html>
         return true;
       }
       const role = (window.__SIFE_ROLE_NAME__ || "").trim().toLowerCase();
+      // Si el servidor entrega JWT sin rol visible, no bloqueamos la UI:
+      // el backend RBAC sigue protegiendo operaciones sensibles.
+      if (!role) {
+        return true;
+      }
       if (role === "admin" || role === "direccion" || role === "consulta") {
         return true;
       }
@@ -8048,7 +8095,7 @@ _UI_TEMPLATE = """<!doctype html>
     function applyRoleToSidebar() {
       const hasJwt = !!sessionStorage.getItem("sife_access_token");
       const role = (window.__SIFE_ROLE_NAME__ || "").trim().toLowerCase();
-      const showAll = !hasJwt || role === "admin" || role === "direccion" || role === "consulta";
+      const showAll = !hasJwt || !role || role === "admin" || role === "direccion" || role === "consulta";
       for (const btn of document.querySelectorAll("button.nav-button[data-page]")) {
         const p = btn.dataset.page;
         if (!p) {
@@ -8453,14 +8500,20 @@ _UI_TEMPLATE = """<!doctype html>
         const me = await r.json();
         window.__SIFE_ROLE_NAME__ = me.role_name || "";
         const roleLabel = (me.role_name || "").trim().toLowerCase();
-        const menuNote =
-          roleLabel &&
-          roleLabel !== "admin" &&
-          roleLabel !== "direccion" &&
-          roleLabel !== "consulta"
-            ? " Menú acotado a su rol."
-            : "";
-        hint.textContent = "Sesión: " + me.username + " (" + me.role_name + ")." + menuNote;
+        if (!roleLabel) {
+          hint.textContent =
+            "Sesión: " +
+            me.username +
+            " (sin rol). Menú completo en UI; permisos finales se validan en servidor.";
+        } else {
+          const menuNote =
+            roleLabel !== "admin" &&
+            roleLabel !== "direccion" &&
+            roleLabel !== "consulta"
+              ? " Menú acotado a su rol."
+              : "";
+          hint.textContent = "Sesión: " + me.username + " (" + me.role_name + ")." + menuNote;
+        }
         loginLink.style.display = "none";
         logoutBtn.style.display = "inline-block";
         setApiKeyNoteVisible(false);
@@ -9588,6 +9641,10 @@ _UI_TEMPLATE = """<!doctype html>
     }
 
     function renderOrdenesServicio() {
+      const hasJwt = !!sessionStorage.getItem("sife_access_token");
+      const role = (window.__SIFE_ROLE_NAME__ || "").trim().toLowerCase();
+      const canManageOrdenServicio = !(hasJwt && role === "consulta");
+      const detailButtonLabel = canManageOrdenServicio ? "Gestionar" : "Ver detalle";
       const items = filteredOrdenesServicio();
       const rows = items
         .map(
@@ -9603,7 +9660,7 @@ _UI_TEMPLATE = """<!doctype html>
           <td class="table-money">${fmtMoneyList(item.precio_comprometido)}</td>
           <td>
             <div class="row-actions">
-              <button type="button" class="secondary-button small-button" onclick="showOrdenServicioDetail(${item.id})">Ver detalle</button>
+              <button type="button" class="secondary-button small-button" onclick="showOrdenServicioDetail(${item.id})">${detailButtonLabel}</button>
             </div>
           </td>
         </tr>
@@ -9989,10 +10046,8 @@ _UI_TEMPLATE = """<!doctype html>
         }
         return;
       }
-      const submitButton = getPrimarySaveButton(formElement);
-      if (submitButton && typeof submitButton.focus === "function") {
-        submitButton.focus();
-      }
+      // Evita que Enter en el ultimo campo enfoque/active "Guardar",
+      // porque puede disparar submits no intencionales y dar sensacion de congelamiento.
     }
 
     function wireImplicitSubmitGuard(formId) {
@@ -10029,6 +10084,9 @@ _UI_TEMPLATE = """<!doctype html>
       }
       formElement.dataset.enterNavInstalled = "true";
       const onEnterNavKeydown = (event) => {
+        if (event.defaultPrevented || event.isComposing || event.repeat) {
+          return;
+        }
         const isEnter =
           event.key === "Enter" ||
           event.code === "Enter" ||
@@ -10085,6 +10143,9 @@ _UI_TEMPLATE = """<!doctype html>
       window.__sifeClienteContactoEnterNav = true;
       const saveId = "cliente-contacto-guardar";
       const onEnter = (event) => {
+        if (event.defaultPrevented || event.isComposing || event.repeat) {
+          return;
+        }
         const isEnter =
           event.key === "Enter" ||
           event.code === "Enter" ||
@@ -10143,8 +10204,10 @@ _UI_TEMPLATE = """<!doctype html>
           saveBtn.focus();
         }
       };
-      window.addEventListener("keydown", onEnter, true);
-      window.addEventListener("keypress", (event) => {
+      // Limita la captura de Enter al formulario de contactos del cliente.
+      // Evita interferencia global con otros formularios/paneles al navegar con teclado.
+      form.addEventListener("keydown", onEnter, true);
+      form.addEventListener("keypress", (event) => {
         const isEnter = event.key === "Enter" || event.keyCode === 13;
         if (!isEnter) {
           return;
@@ -12935,32 +12998,46 @@ _UI_TEMPLATE = """<!doctype html>
     }
 
     async function boot() {
-      await initAuthBar();
-      initNavigation();
-      installCaptureFormCancelButtons();
-      initForms();
-      wireMoneyInputs();
-      for (const form of document.querySelectorAll("form")) {
-        applyMoneyFormatToForm(form);
+      const initErrors = [];
+      async function runInitStep(name, fn) {
+        try {
+          await fn();
+        } catch (error) {
+          const msg = error && error.message ? error.message : String(error);
+          initErrors.push(`${name}: ${msg}`);
+          console.error(`[SIFE boot] ${name}`, error);
+        }
       }
-      initClienteModule();
-      initTransportistaModule();
-      initCrudSubpageModules();
-      initFacturaModule();
-      initFilters();
-      initTarifaVentaNombreUnico();
-      initUsuariosAdminModule();
-      initEditors();
-      initFleteCotizador();
-      wireEnterAvanzaCampo("#flete-form");
-      wireEnterAvanzaCampo("#flete-edit-form");
-      try {
-        await Promise.all([refreshData(), fetchHealthIntoPanel()]);
-      } catch (error) {
+
+      await runInitStep("initAuthBar", () => initAuthBar());
+      await runInitStep("initNavigation", () => initNavigation());
+      await runInitStep("applyCaptureShellStyle", () => applyCaptureShellStyle());
+      await runInitStep("installCaptureFormCancelButtons", () => installCaptureFormCancelButtons());
+      await runInitStep("initForms", () => initForms());
+      await runInitStep("wireMoneyInputs", () => wireMoneyInputs());
+      await runInitStep("applyMoneyFormatToForm(all)", () => {
+        for (const form of document.querySelectorAll("form")) {
+          applyMoneyFormatToForm(form);
+        }
+      });
+      await runInitStep("initClienteModule", () => initClienteModule());
+      await runInitStep("initTransportistaModule", () => initTransportistaModule());
+      await runInitStep("initCrudSubpageModules", () => initCrudSubpageModules());
+      await runInitStep("initFacturaModule", () => initFacturaModule());
+      await runInitStep("initFilters", () => initFilters());
+      await runInitStep("initTarifaVentaNombreUnico", () => initTarifaVentaNombreUnico());
+      await runInitStep("initUsuariosAdminModule", () => initUsuariosAdminModule());
+      await runInitStep("initEditors", () => initEditors());
+      await runInitStep("initFleteCotizador", () => initFleteCotizador());
+      await runInitStep("wireEnterAvanzaCampo(#flete-form)", () => wireEnterAvanzaCampo("#flete-form"));
+      await runInitStep("wireEnterAvanzaCampo(#flete-edit-form)", () => wireEnterAvanzaCampo("#flete-edit-form"));
+      await runInitStep("refreshData + fetchHealthIntoPanel", () => Promise.all([refreshData(), fetchHealthIntoPanel()]));
+
+      if (initErrors.length) {
         document.body.insertAdjacentHTML(
           "afterbegin",
           `<div style="margin:16px;padding:12px;border:1px solid #fecaca;background:#fef2f2;color:#991b1b;border-radius:12px;">
-            No se pudo cargar el panel: ${error.message}
+            El panel cargo con incidencias. Revise la consola del navegador para detalle.
           </div>`
         );
       }

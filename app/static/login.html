@@ -51,11 +51,23 @@
       const body = new URLSearchParams();
       body.append("username", (fd.get("username") || "").trim());
       body.append("password", fd.get("password") || "");
-      const r = await fetch(API_BASE + "/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
-      });
+      let r;
+      try {
+        r = await fetch(API_BASE + "/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+          signal: AbortSignal.timeout(25_000),
+        });
+      } catch (err) {
+        const name = err && err.name;
+        msg.textContent =
+          name === "TimeoutError" || name === "AbortError"
+            ? "El servidor no respondio a tiempo. Revise que uvicorn este en marcha y MySQL accesible (.env)."
+            : "No se pudo contactar al servidor.";
+        msg.hidden = false;
+        return;
+      }
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
         const d = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || data);
