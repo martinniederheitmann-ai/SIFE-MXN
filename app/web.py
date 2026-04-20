@@ -5603,6 +5603,9 @@ _UI_TEMPLATE = """<!doctype html>
               </label>
               <div class="span-2 toolbar-actions">
                 <button type="submit">Actualizar tablero</button>
+                <button type="button" class="secondary-button" id="direccion-export-dashboard-btn">Exportar CSV dashboard</button>
+                <button type="button" class="secondary-button" id="direccion-export-incidencias-btn">Exportar CSV incidencias</button>
+                <button type="button" class="secondary-button" id="direccion-export-acciones-btn">Exportar CSV acciones</button>
               </div>
             </form>
             <div id="direccion-message" class="message"></div>
@@ -5663,6 +5666,14 @@ _UI_TEMPLATE = """<!doctype html>
                 <tr><td>Cobranza</td><td>—</td></tr>
               </tbody>
             </table>
+          </article>
+        </div>
+
+        <div class="grid" style="margin-top: 16px;">
+          <article class="card">
+            <h3>Resumen semanal automático</h3>
+            <p id="direccion-resumen-texto" class="hint">Sin datos aún.</p>
+            <div id="direccion-riesgos-texto" class="hint"></div>
           </article>
         </div>
 
@@ -8433,10 +8444,35 @@ _UI_TEMPLATE = """<!doctype html>
       try {
         const data = await api(`/direccion/dashboard?${q.toString()}`);
         renderDireccionDashboard(data);
+        await refreshDireccionResumenSemanal();
         await Promise.all([refreshDireccionIncidencias(), refreshDireccionAcciones()]);
         setMessage("direccion-message", `Rango consultado: ${data.desde} a ${data.hasta}.`, "ok");
       } catch (error) {
         setMessage("direccion-message", error?.message || "No se pudo cargar tablero de dirección.", "error");
+      }
+    }
+
+    async function refreshDireccionResumenSemanal() {
+      const fromInput = document.getElementById("direccion-desde");
+      const toInput = document.getElementById("direccion-hasta");
+      const resumenEl = document.getElementById("direccion-resumen-texto");
+      const riesgosEl = document.getElementById("direccion-riesgos-texto");
+      if (!fromInput || !toInput || !resumenEl || !riesgosEl) {
+        return;
+      }
+      const range = ensureDireccionDateRange(fromInput, toInput, "direccion-message");
+      if (!range) return;
+      try {
+        const q = new URLSearchParams({ desde: range.from, hasta: range.to });
+        const data = await api(`/direccion/resumen-semanal?${q.toString()}`);
+        resumenEl.textContent = data?.mensaje || "Sin resumen disponible.";
+        const crit = Number(data?.riesgos?.incidencias_criticas_abiertas || 0);
+        const pend = Number(data?.riesgos?.acciones_pendientes || 0);
+        const total = Number(data?.riesgos?.acciones_total || 0);
+        riesgosEl.textContent = `Riesgos: ${crit} incidencias críticas/altas abiertas; ${pend} acciones pendientes de ${total} registradas.`;
+      } catch (error) {
+        resumenEl.textContent = "No se pudo generar el resumen semanal.";
+        riesgosEl.textContent = error?.message || "";
       }
     }
 
@@ -8567,6 +8603,9 @@ _UI_TEMPLATE = """<!doctype html>
       }
       const incForm = document.getElementById("direccion-incidencia-form");
       const accForm = document.getElementById("direccion-accion-form");
+      const exportDashboardBtn = document.getElementById("direccion-export-dashboard-btn");
+      const exportIncBtn = document.getElementById("direccion-export-incidencias-btn");
+      const exportAccBtn = document.getElementById("direccion-export-acciones-btn");
       if (incForm && !incForm.dataset.defaultsSet) {
         const f = incForm;
         if (f.elements.fecha_detectada && !f.elements.fecha_detectada.value) {
@@ -8588,6 +8627,51 @@ _UI_TEMPLATE = """<!doctype html>
         event.preventDefault();
         void refreshDireccionDashboard();
       });
+      if (exportDashboardBtn && exportDashboardBtn.dataset.bound !== "true") {
+        exportDashboardBtn.dataset.bound = "true";
+        exportDashboardBtn.addEventListener("click", async () => {
+          clearMessage("direccion-message");
+          const range = ensureDireccionDateRange(fromInput, toInput, "direccion-message");
+          if (!range) return;
+          try {
+            const q = new URLSearchParams({ desde: range.from, hasta: range.to });
+            await apiDownload(`/direccion/export/dashboard.csv?${q.toString()}`, "direccion_dashboard.csv");
+            setMessage("direccion-message", "Exportación de dashboard iniciada.", "ok");
+          } catch (error) {
+            setMessage("direccion-message", error?.message || "No se pudo exportar dashboard.", "error");
+          }
+        });
+      }
+      if (exportIncBtn && exportIncBtn.dataset.bound !== "true") {
+        exportIncBtn.dataset.bound = "true";
+        exportIncBtn.addEventListener("click", async () => {
+          clearMessage("direccion-incidencia-message");
+          const range = ensureDireccionDateRange(fromInput, toInput, "direccion-incidencia-message");
+          if (!range) return;
+          try {
+            const q = new URLSearchParams({ desde: range.from, hasta: range.to });
+            await apiDownload(`/direccion/export/incidencias.csv?${q.toString()}`, "direccion_incidencias.csv");
+            setMessage("direccion-incidencia-message", "Exportación de incidencias iniciada.", "ok");
+          } catch (error) {
+            setMessage("direccion-incidencia-message", error?.message || "No se pudo exportar incidencias.", "error");
+          }
+        });
+      }
+      if (exportAccBtn && exportAccBtn.dataset.bound !== "true") {
+        exportAccBtn.dataset.bound = "true";
+        exportAccBtn.addEventListener("click", async () => {
+          clearMessage("direccion-accion-message");
+          const range = ensureDireccionDateRange(fromInput, toInput, "direccion-accion-message");
+          if (!range) return;
+          try {
+            const q = new URLSearchParams({ week_start: range.from, week_end: range.to });
+            await apiDownload(`/direccion/export/acciones.csv?${q.toString()}`, "direccion_acciones.csv");
+            setMessage("direccion-accion-message", "Exportación de acciones iniciada.", "ok");
+          } catch (error) {
+            setMessage("direccion-accion-message", error?.message || "No se pudo exportar acciones.", "error");
+          }
+        });
+      }
 
       if (incForm && incForm.dataset.bound !== "true") {
         incForm.dataset.bound = "true";
@@ -8795,6 +8879,32 @@ _UI_TEMPLATE = """<!doctype html>
       }
 
       return response.json();
+    }
+
+    async function apiDownload(path, filenameFallback) {
+      const response = await fetch(`${API_BASE}${path}`, {
+        method: "GET",
+        headers: {
+          Accept: "text/csv,application/json",
+          ...getAuthHeaders(),
+        },
+      });
+      if (!response.ok) {
+        const raw = await response.text();
+        throw new Error(raw || `HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const cd = response.headers.get("content-disposition") || "";
+      const m = cd.match(/filename=\"?([^\";]+)\"?/i);
+      const filename = m && m[1] ? m[1] : filenameFallback;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     }
 
     function syncUsuariosAdminPanels() {

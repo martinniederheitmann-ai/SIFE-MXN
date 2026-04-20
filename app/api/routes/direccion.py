@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import csv
+import io
 from datetime import date, datetime, time, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -139,6 +141,27 @@ def _parse_estatus_accion(value: str) -> AccionEstatus:
         return AccionEstatus((value or "").strip().lower())
     except ValueError as exc:
         raise HTTPException(status_code=422, detail="Estatus de accion invalido.") from exc
+
+
+def _list_incidencias_rows(db: Session, start_date: date, end_date: date) -> list[DireccionIncidencia]:
+    stmt = (
+        select(DireccionIncidencia)
+        .where(
+            DireccionIncidencia.fecha_detectada >= start_date,
+            DireccionIncidencia.fecha_detectada <= end_date,
+        )
+        .order_by(DireccionIncidencia.fecha_detectada.desc(), DireccionIncidencia.id.desc())
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+def _list_acciones_rows(db: Session, start_date: date, end_date: date) -> list[DireccionAccion]:
+    stmt = (
+        select(DireccionAccion)
+        .where(DireccionAccion.week_start >= start_date, DireccionAccion.week_end <= end_date)
+        .order_by(DireccionAccion.week_start.desc(), DireccionAccion.id.desc())
+    )
+    return list(db.execute(stmt).scalars().all())
 
 
 @router.get(
@@ -301,15 +324,7 @@ def list_incidencias(
 ) -> list[DireccionIncidenciaRead]:
     _require_direccion_or_admin(user)
     start_date, end_date = _clamp_range(desde, hasta)
-    stmt = (
-        select(DireccionIncidencia)
-        .where(
-            DireccionIncidencia.fecha_detectada >= start_date,
-            DireccionIncidencia.fecha_detectada <= end_date,
-        )
-        .order_by(DireccionIncidencia.fecha_detectada.desc(), DireccionIncidencia.id.desc())
-    )
-    rows = db.execute(stmt).scalars().all()
+    rows = _list_incidencias_rows(db, start_date, end_date)
     return [_incidencia_to_read(x) for x in rows]
 
 
@@ -383,12 +398,7 @@ def list_acciones(
 ) -> list[DireccionAccionRead]:
     _require_direccion_or_admin(user)
     start_date, end_date = _clamp_range(week_start, week_end)
-    stmt = (
-        select(DireccionAccion)
-        .where(DireccionAccion.week_start >= start_date, DireccionAccion.week_end <= end_date)
-        .order_by(DireccionAccion.week_start.desc(), DireccionAccion.id.desc())
-    )
-    rows = db.execute(stmt).scalars().all()
+    rows = _list_acciones_rows(db, start_date, end_date)
     return [_accion_to_read(x) for x in rows]
 
 
@@ -451,3 +461,169 @@ def update_accion(
     db.commit()
     db.refresh(row)
     return _accion_to_read(row)
+
+
+@router.get("/resumen-semanal", summary="Resumen automático semanal de dirección")
+def get_resumen_semanal(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_jwt),
+    desde: date | None = Query(default=None),
+    hasta: date | None = Query(default=None),
+) -> dict:
+    _require_direccion_or_admin(user)
+    start_date, end_date = _clamp_range(desde, hasta)
+    dashboard = get_dashboard_direccion(db=db, user=user, desde=start_date, hasta=end_date)
+    incidencias = _list_incidencias_rows(db, start_date, end_date)
+    acciones = _list_acciones_rows(db, start_date, end_date)
+
+    criticas_abiertas = sum(
+        1
+        for i in incidencias
+        if i.severidad in {IncidenciaSeveridad.ALTA, IncidenciaSeveridad.CRITICA}
+        and i.estatus != IncidenciaEstatus.RESUELTA
+    )
+    acciones_pendientes = sum(
+        1 for a in acciones if a.estatus in {AccionEstatus.PENDIENTE, AccionEstatus.EN_CURSO}
+    )
+    acciones_total = len(acciones)
+
+    message = (
+        f"Semana {start_date.isoformat()} a {end_date.isoformat()}: "
+        f"{dashboard.resumen.despachos_cerrados} despachos cerrados, "
+        f"{dashboard.resumen.facturas_emitidas} facturas emitidas y "
+        f"conversión despacho->factura de {dashboard.embudo.despacho_a_factura_pct:.2f}%."
+    )
+
+    return {
+        "desde": start_date,
+        "hasta": end_date,
+        "mensaje": message,
+        "riesgos": {
+            "incidencias_criticas_abiertas": criticas_abiertas,
+            "acciones_pendientes": acciones_pendientes,
+            "acciones_total": acciones_total,
+        },
+        "semaforo": dashboard.semaforo.model_dump(),
+        "embudo": dashboard.embudo.model_dump(),
+        "tiempos": dashboard.tiempos.model_dump(),
+    }
+
+
+@router.get("/export/dashboard.csv", summary="Exportar dashboard de dirección a CSV")
+def export_dashboard_csv(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_jwt),
+    desde: date | None = Query(default=None),
+    hasta: date | None = Query(default=None),
+) -> Response:
+    _require_direccion_or_admin(user)
+    start_date, end_date = _clamp_range(desde, hasta)
+    dashboard = get_dashboard_direccion(db=db, user=user, desde=start_date, hasta=end_date)
+    summary = get_resumen_semanal(db=db, user=user, desde=start_date, hasta=end_date)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["desde", "hasta", "fletes", "ordenes_servicio", "asignaciones", "despachos", "despachos_cerrados", "facturas", "facturas_emitidas", "incidencias_despacho", "fletes_a_os_pct", "os_a_asignacion_pct", "asignacion_a_despacho_pct", "despacho_a_factura_pct", "flete_a_factura_horas", "orden_a_despacho_horas", "despacho_a_factura_horas", "semaforo_operacion", "semaforo_sistema", "semaforo_dato", "semaforo_cobranza", "incidencias_criticas_abiertas", "acciones_pendientes"])
+    writer.writerow(
+        [
+            dashboard.desde.isoformat(),
+            dashboard.hasta.isoformat(),
+            dashboard.resumen.fletes,
+            dashboard.resumen.ordenes_servicio,
+            dashboard.resumen.asignaciones,
+            dashboard.resumen.despachos,
+            dashboard.resumen.despachos_cerrados,
+            dashboard.resumen.facturas,
+            dashboard.resumen.facturas_emitidas,
+            dashboard.resumen.incidencias_despacho,
+            dashboard.embudo.fletes_a_os_pct,
+            dashboard.embudo.os_a_asignacion_pct,
+            dashboard.embudo.asignacion_a_despacho_pct,
+            dashboard.embudo.despacho_a_factura_pct,
+            dashboard.tiempos.flete_a_factura_horas,
+            dashboard.tiempos.orden_a_despacho_horas,
+            dashboard.tiempos.despacho_a_factura_horas,
+            dashboard.semaforo.operacion,
+            dashboard.semaforo.sistema,
+            dashboard.semaforo.dato,
+            dashboard.semaforo.cobranza,
+            summary["riesgos"]["incidencias_criticas_abiertas"],
+            summary["riesgos"]["acciones_pendientes"],
+        ]
+    )
+    filename = f"direccion_dashboard_{start_date.isoformat()}_{end_date.isoformat()}.csv"
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/export/incidencias.csv", summary="Exportar incidencias de dirección a CSV")
+def export_incidencias_csv(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_jwt),
+    desde: date | None = Query(default=None),
+    hasta: date | None = Query(default=None),
+) -> Response:
+    _require_direccion_or_admin(user)
+    start_date, end_date = _clamp_range(desde, hasta)
+    rows = _list_incidencias_rows(db, start_date, end_date)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["id", "fecha_detectada", "modulo", "titulo", "severidad", "estatus", "responsable", "detalle", "resuelta_at"])
+    for row in rows:
+        writer.writerow(
+            [
+                row.id,
+                row.fecha_detectada.isoformat(),
+                row.modulo,
+                row.titulo,
+                row.severidad.value,
+                row.estatus.value,
+                row.responsable or "",
+                row.detalle or "",
+                row.resuelta_at.isoformat() if row.resuelta_at else "",
+            ]
+        )
+    filename = f"direccion_incidencias_{start_date.isoformat()}_{end_date.isoformat()}.csv"
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/export/acciones.csv", summary="Exportar acciones semanales de dirección a CSV")
+def export_acciones_csv(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_jwt),
+    week_start: date | None = Query(default=None),
+    week_end: date | None = Query(default=None),
+) -> Response:
+    _require_direccion_or_admin(user)
+    start_date, end_date = _clamp_range(week_start, week_end)
+    rows = _list_acciones_rows(db, start_date, end_date)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["id", "week_start", "week_end", "titulo", "owner", "due_date", "estatus", "impacto", "descripcion"])
+    for row in rows:
+        writer.writerow(
+            [
+                row.id,
+                row.week_start.isoformat(),
+                row.week_end.isoformat(),
+                row.titulo,
+                row.owner,
+                row.due_date.isoformat() if row.due_date else "",
+                row.estatus.value,
+                row.impacto or "",
+                row.descripcion or "",
+            ]
+        )
+    filename = f"direccion_acciones_{start_date.isoformat()}_{end_date.isoformat()}.csv"
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
