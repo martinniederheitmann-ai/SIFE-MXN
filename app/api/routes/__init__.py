@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from . import asignaciones as asignaciones_routes
+from . import audit_logs as audit_logs_routes
 from . import clientes as clientes_routes
 from . import cumplimiento as cumplimiento_routes
 from . import direccion as direccion_routes
@@ -19,6 +20,9 @@ from . import usuarios as usuarios_routes
 from . import viajes as viajes_routes
 
 api_router = APIRouter()
+api_router.include_router(
+    audit_logs_routes.router, prefix="/audit-logs", tags=["auditoria"]
+)
 api_router.include_router(viajes_routes.router, prefix="/viajes", tags=["viajes"])
 api_router.include_router(clientes_routes.router, prefix="/clientes", tags=["clientes"])
 api_router.include_router(facturas_routes.router, prefix="/facturas", tags=["facturas"])

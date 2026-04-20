@@ -44,6 +44,10 @@ app = FastAPI(
         },
         {"name": "auth", "description": "Login JWT, perfil y cambio de contraseña propia (Bearer)."},
         {"name": "usuarios", "description": "Alta y mantenimiento de usuarios y roles (JWT admin o direccion; API key sin filtro de rol)."},
+        {
+            "name": "auditoria",
+            "description": "Consulta de pista de auditoría (JWT admin o dirección; API key denegada).",
+        },
         {"name": "sistema", "description": "Comprobación de disponibilidad del servicio."},
     ],
 )

@@ -21,6 +21,29 @@ def model_to_dict(obj: Any) -> dict[str, Any]:
     return out
 
 
+def _is_sensitive_audit_key(key: str) -> bool:
+    lower = key.lower()
+    if lower in {"hashed_password", "password", "current_password", "new_password"}:
+        return True
+    if "password" in lower or "secret" in lower or lower.endswith("_token"):
+        return True
+    if lower == "api_key" or lower.endswith("_api_key"):
+        return True
+    return False
+
+
+def _redact_audit_mapping(data: dict[str, Any] | None) -> dict[str, Any] | None:
+    if data is None:
+        return None
+    out: dict[str, Any] = {}
+    for k, v in data.items():
+        if _is_sensitive_audit_key(k):
+            out[k] = None if v is None else "***"
+        else:
+            out[k] = v
+    return out
+
+
 def _safe_json(value: Any) -> str | None:
     if value is None:
         return None
@@ -52,6 +75,9 @@ def write_audit_log(
             actor_username = auth.user.username
             actor_role = auth.user.role.name if auth.user and auth.user.role else None
 
+    rb = _redact_audit_mapping(before)
+    ra = _redact_audit_mapping(after)
+    rm = _redact_audit_mapping(meta)
     row = AuditLog(
         entity=entity,
         entity_id=str(entity_id) if entity_id is not None else None,
@@ -62,9 +88,9 @@ def write_audit_log(
         is_api_key=is_api_key,
         source_path=str(request.url.path) if request is not None else None,
         source_method=request.method.upper() if request is not None else None,
-        before_json=_safe_json(before),
-        after_json=_safe_json(after),
-        meta_json=_safe_json(meta),
+        before_json=_safe_json(rb),
+        after_json=_safe_json(ra),
+        meta_json=_safe_json(rm),
     )
     db.add(row)
     db.commit()
