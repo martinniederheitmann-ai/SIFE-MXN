@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.services.audit import model_to_dict, write_audit_log
 from app.crud import viaje as crud_viaje
 from app.models.viaje import EstadoViaje
 from app.schemas.viaje import ViajeCreate, ViajeListResponse, ViajeRead, ViajeUpdate
@@ -18,6 +19,7 @@ router = APIRouter()
 )
 def crear_viaje(
     payload: ViajeCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> ViajeRead:
     if crud_viaje.get_by_codigo(db, payload.codigo_viaje):
@@ -25,7 +27,16 @@ def crear_viaje(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Ya existe un viaje con el código '{payload.codigo_viaje}'.",
         )
-    return crud_viaje.create(db, payload)
+    row = crud_viaje.create(db, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="viaje",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
+    return ViajeRead.model_validate(row)
 
 
 @router.get(
@@ -94,6 +105,7 @@ def obtener_viaje(
 def actualizar_viaje(
     viaje_id: int,
     payload: ViajeUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> ViajeRead:
     viaje = crud_viaje.get_by_id(db, viaje_id)
@@ -102,6 +114,7 @@ def actualizar_viaje(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Viaje no encontrado.",
         )
+    before = model_to_dict(viaje)
     if payload.codigo_viaje is not None and payload.codigo_viaje != viaje.codigo_viaje:
         existente = crud_viaje.get_by_codigo(db, payload.codigo_viaje)
         if existente:
@@ -109,7 +122,17 @@ def actualizar_viaje(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Ya existe un viaje con el código '{payload.codigo_viaje}'.",
             )
-    return crud_viaje.update(db, viaje, payload)
+    updated = crud_viaje.update(db, viaje, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="viaje",
+        entity_id=viaje_id,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+    )
+    return ViajeRead.model_validate(updated)
 
 
 @router.delete(
@@ -120,6 +143,7 @@ def actualizar_viaje(
 )
 def eliminar_viaje(
     viaje_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> None:
     viaje = crud_viaje.get_by_id(db, viaje_id)
@@ -128,4 +152,13 @@ def eliminar_viaje(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Viaje no encontrado.",
         )
+    before = model_to_dict(viaje)
     crud_viaje.delete(db, viaje)
+    write_audit_log(
+        db,
+        request,
+        entity="viaje",
+        entity_id=viaje_id,
+        action="delete",
+        before=before,
+    )

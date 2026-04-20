@@ -4,7 +4,7 @@ import csv
 import io
 from datetime import date, datetime, time, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -35,6 +35,7 @@ from app.schemas.direccion import (
     DireccionSemaforo,
     DireccionTiemposCiclo,
 )
+from app.services.audit import model_to_dict, write_audit_log
 
 router = APIRouter()
 
@@ -337,6 +338,7 @@ def list_incidencias(
 @router.post("/incidencias", response_model=DireccionIncidenciaRead, summary="Crear incidencia dirección")
 def create_incidencia(
     payload: DireccionIncidenciaCreate,
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user_jwt),
 ) -> DireccionIncidenciaRead:
@@ -355,6 +357,14 @@ def create_incidencia(
     db.add(row)
     db.commit()
     db.refresh(row)
+    write_audit_log(
+        db,
+        request,
+        entity="direccion_incidencia",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
     return _incidencia_to_read(row)
 
 
@@ -362,6 +372,7 @@ def create_incidencia(
 def update_incidencia(
     incidencia_id: int,
     payload: DireccionIncidenciaUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user_jwt),
 ) -> DireccionIncidenciaRead:
@@ -369,6 +380,7 @@ def update_incidencia(
     row = db.get(DireccionIncidencia, incidencia_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Incidencia no encontrada.")
+    before = model_to_dict(row)
     data = payload.model_dump(exclude_unset=True)
     if "titulo" in data:
         row.titulo = data["titulo"].strip()
@@ -392,6 +404,15 @@ def update_incidencia(
     db.add(row)
     db.commit()
     db.refresh(row)
+    write_audit_log(
+        db,
+        request,
+        entity="direccion_incidencia",
+        entity_id=incidencia_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+    )
     return _incidencia_to_read(row)
 
 
@@ -411,6 +432,7 @@ def list_acciones(
 @router.post("/acciones", response_model=DireccionAccionRead, summary="Crear acción semanal dirección")
 def create_accion(
     payload: DireccionAccionCreate,
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user_jwt),
 ) -> DireccionAccionRead:
@@ -430,6 +452,14 @@ def create_accion(
     db.add(row)
     db.commit()
     db.refresh(row)
+    write_audit_log(
+        db,
+        request,
+        entity="direccion_accion",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
     return _accion_to_read(row)
 
 
@@ -437,6 +467,7 @@ def create_accion(
 def update_accion(
     accion_id: int,
     payload: DireccionAccionUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user_jwt),
 ) -> DireccionAccionRead:
@@ -444,6 +475,7 @@ def update_accion(
     row = db.get(DireccionAccion, accion_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Accion no encontrada.")
+    before = model_to_dict(row)
     data = payload.model_dump(exclude_unset=True)
     if "week_start" in data:
         row.week_start = data["week_start"]
@@ -466,6 +498,15 @@ def update_accion(
     db.add(row)
     db.commit()
     db.refresh(row)
+    write_audit_log(
+        db,
+        request,
+        entity="direccion_accion",
+        entity_id=accion_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+    )
     return _accion_to_read(row)
 
 

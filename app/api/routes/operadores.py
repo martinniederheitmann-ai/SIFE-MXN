@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -40,6 +40,7 @@ from app.schemas.operador_laboral import (
     OperadorLaboralRead,
     OperadorLaboralUpdate,
 )
+from app.services.audit import model_to_dict, write_audit_log
 from app.schemas.pago_operador import (
     PagoOperadorCreate,
     PagoOperadorListResponse,
@@ -95,14 +96,25 @@ def _cumplimiento_federal(db: Session, id_operador: int) -> OperadorCumplimiento
 
 
 @router.post("", response_model=OperadorRead, status_code=status.HTTP_201_CREATED, summary="Crear operador")
-def crear_operador(payload: OperadorCreate, db: Session = Depends(get_db)) -> OperadorRead:
+def crear_operador(
+    payload: OperadorCreate, request: Request, db: Session = Depends(get_db)
+) -> OperadorRead:
     if crud_operador.get_by_curp(db, payload.curp):
         raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe un operador con esa CURP.")
     if crud_operador.get_by_nss(db, payload.nss):
         raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe un operador con ese NSS.")
     if payload.transportista_id is not None and not crud_transportista.get_by_id(db, payload.transportista_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Transportista no encontrado.")
-    return crud_operador.create(db, payload)
+    row = crud_operador.create(db, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="operador",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
+    return OperadorRead.model_validate(row)
 
 
 @router.get("", response_model=OperadorListResponse, summary="Listar operadores")
@@ -131,9 +143,13 @@ def obtener_operador(id_operador: int, db: Session = Depends(get_db)) -> Operado
 
 @router.patch("/{id_operador}", response_model=OperadorRead, summary="Actualizar operador")
 def actualizar_operador(
-    id_operador: int, payload: OperadorUpdate, db: Session = Depends(get_db)
+    id_operador: int,
+    payload: OperadorUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> OperadorRead:
     row = _operador_or_404(db, id_operador)
+    before = model_to_dict(row)
     if payload.curp is not None and payload.curp != row.curp:
         if crud_operador.get_by_curp(db, payload.curp):
             raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe un operador con esa CURP.")
@@ -142,12 +158,23 @@ def actualizar_operador(
             raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe un operador con ese NSS.")
     if payload.transportista_id is not None and not crud_transportista.get_by_id(db, payload.transportista_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Transportista no encontrado.")
-    return crud_operador.update(db, row, payload)
+    updated = crud_operador.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="operador",
+        entity_id=id_operador,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+    )
+    return OperadorRead.model_validate(updated)
 
 
 @router.delete("/{id_operador}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar operador")
-def eliminar_operador(id_operador: int, db: Session = Depends(get_db)) -> None:
+def eliminar_operador(id_operador: int, request: Request, db: Session = Depends(get_db)) -> None:
     row = _operador_or_404(db, id_operador)
+    before = model_to_dict(row)
     try:
         crud_operador.delete(db, row)
     except IntegrityError:
@@ -156,6 +183,14 @@ def eliminar_operador(id_operador: int, db: Session = Depends(get_db)) -> None:
             status.HTTP_409_CONFLICT,
             "No se puede eliminar el operador: existen asignaciones u otros registros vinculados.",
         ) from None
+    write_audit_log(
+        db,
+        request,
+        entity="operador",
+        entity_id=id_operador,
+        action="delete",
+        before=before,
+    )
 
 
 @router.get(
@@ -193,10 +228,21 @@ def listar_documentos_operador(
 def crear_documento_operador(
     id_operador: int,
     payload: DocumentoOperadorCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> DocumentoOperadorRead:
     _operador_or_404(db, id_operador)
-    return crud_documento_operador.create(db, id_operador, payload)
+    row = crud_documento_operador.create(db, id_operador, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_documento",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"id_operador": id_operador},
+    )
+    return DocumentoOperadorRead.model_validate(row)
 
 
 @router.get(
@@ -223,13 +269,26 @@ def actualizar_documento_operador(
     id_operador: int,
     id_documento: int,
     payload: DocumentoOperadorUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> DocumentoOperadorRead:
     _operador_or_404(db, id_operador)
     row = crud_documento_operador.get_by_id(db, id_documento, id_operador)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento no encontrado.")
-    return crud_documento_operador.update(db, row, payload)
+    before = model_to_dict(row)
+    updated = crud_documento_operador.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_documento",
+        entity_id=id_documento,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+        meta={"id_operador": id_operador},
+    )
+    return DocumentoOperadorRead.model_validate(updated)
 
 
 @router.delete(
@@ -238,13 +297,26 @@ def actualizar_documento_operador(
     summary="Eliminar documento de operador",
 )
 def eliminar_documento_operador(
-    id_operador: int, id_documento: int, db: Session = Depends(get_db)
+    id_operador: int,
+    id_documento: int,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> None:
     _operador_or_404(db, id_operador)
     row = crud_documento_operador.get_by_id(db, id_documento, id_operador)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento no encontrado.")
+    before = model_to_dict(row)
     crud_documento_operador.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_documento",
+        entity_id=id_documento,
+        action="delete",
+        before=before,
+        meta={"id_operador": id_operador},
+    )
 
 
 @router.get(
@@ -268,10 +340,23 @@ def obtener_laboral_operador(id_operador: int, db: Session = Depends(get_db)) ->
 def crear_reemplazar_laboral_operador(
     id_operador: int,
     payload: OperadorLaboralCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> OperadorLaboralRead:
     _operador_or_404(db, id_operador)
-    return crud_operador_laboral.create_or_replace(db, id_operador, payload)
+    prev = crud_operador_laboral.get_by_operador(db, id_operador)
+    before = model_to_dict(prev) if prev else None
+    row = crud_operador_laboral.create_or_replace(db, id_operador, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_laboral",
+        entity_id=id_operador,
+        action="upsert",
+        before=before,
+        after=model_to_dict(row),
+    )
+    return OperadorLaboralRead.model_validate(row)
 
 
 @router.patch(
@@ -282,13 +367,25 @@ def crear_reemplazar_laboral_operador(
 def actualizar_laboral_operador(
     id_operador: int,
     payload: OperadorLaboralUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> OperadorLaboralRead:
     _operador_or_404(db, id_operador)
     row = crud_operador_laboral.get_by_operador(db, id_operador)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ficha laboral no encontrada.")
-    return crud_operador_laboral.update(db, row, payload)
+    before = model_to_dict(row)
+    updated = crud_operador_laboral.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_laboral",
+        entity_id=id_operador,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+    )
+    return OperadorLaboralRead.model_validate(updated)
 
 
 @router.delete(
@@ -296,12 +393,23 @@ def actualizar_laboral_operador(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar ficha laboral de operador",
 )
-def eliminar_laboral_operador(id_operador: int, db: Session = Depends(get_db)) -> None:
+def eliminar_laboral_operador(
+    id_operador: int, request: Request, db: Session = Depends(get_db)
+) -> None:
     _operador_or_404(db, id_operador)
     row = crud_operador_laboral.get_by_operador(db, id_operador)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ficha laboral no encontrada.")
+    before = model_to_dict(row)
     crud_operador_laboral.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_laboral",
+        entity_id=id_operador,
+        action="delete",
+        before=before,
+    )
 
 
 @router.get(
@@ -329,10 +437,21 @@ def listar_incidentes_operador(
 def crear_incidente_operador(
     id_operador: int,
     payload: IncidenteOperadorCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> IncidenteOperadorRead:
     _operador_or_404(db, id_operador)
-    return crud_incidente_operador.create(db, id_operador, payload)
+    row = crud_incidente_operador.create(db, id_operador, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_incidente",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"id_operador": id_operador},
+    )
+    return IncidenteOperadorRead.model_validate(row)
 
 
 @router.get(
@@ -359,13 +478,26 @@ def actualizar_incidente_operador(
     id_operador: int,
     id_incidente: int,
     payload: IncidenteOperadorUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> IncidenteOperadorRead:
     _operador_or_404(db, id_operador)
     row = crud_incidente_operador.get_by_id(db, id_incidente, id_operador)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Incidente no encontrado.")
-    return crud_incidente_operador.update(db, row, payload)
+    before = model_to_dict(row)
+    updated = crud_incidente_operador.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_incidente",
+        entity_id=id_incidente,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+        meta={"id_operador": id_operador},
+    )
+    return IncidenteOperadorRead.model_validate(updated)
 
 
 @router.delete(
@@ -374,13 +506,26 @@ def actualizar_incidente_operador(
     summary="Eliminar incidente de operador",
 )
 def eliminar_incidente_operador(
-    id_operador: int, id_incidente: int, db: Session = Depends(get_db)
+    id_operador: int,
+    id_incidente: int,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> None:
     _operador_or_404(db, id_operador)
     row = crud_incidente_operador.get_by_id(db, id_incidente, id_operador)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Incidente no encontrado.")
+    before = model_to_dict(row)
     crud_incidente_operador.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_incidente",
+        entity_id=id_incidente,
+        action="delete",
+        before=before,
+        meta={"id_operador": id_operador},
+    )
 
 
 @router.get(
@@ -408,10 +553,21 @@ def listar_pagos_operador(
 def crear_pago_operador(
     id_operador: int,
     payload: PagoOperadorCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> PagoOperadorRead:
     _operador_or_404(db, id_operador)
-    return crud_pago_operador.create(db, id_operador, payload)
+    row = crud_pago_operador.create(db, id_operador, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_pago",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"id_operador": id_operador},
+    )
+    return PagoOperadorRead.model_validate(row)
 
 
 @router.get(
@@ -438,13 +594,26 @@ def actualizar_pago_operador(
     id_operador: int,
     id_pago: int,
     payload: PagoOperadorUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> PagoOperadorRead:
     _operador_or_404(db, id_operador)
     row = crud_pago_operador.get_by_id(db, id_pago, id_operador)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Pago no encontrado.")
-    return crud_pago_operador.update(db, row, payload)
+    before = model_to_dict(row)
+    updated = crud_pago_operador.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_pago",
+        entity_id=id_pago,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+        meta={"id_operador": id_operador},
+    )
+    return PagoOperadorRead.model_validate(updated)
 
 
 @router.delete(
@@ -452,9 +621,21 @@ def actualizar_pago_operador(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar pago de operador",
 )
-def eliminar_pago_operador(id_operador: int, id_pago: int, db: Session = Depends(get_db)) -> None:
+def eliminar_pago_operador(
+    id_operador: int, id_pago: int, request: Request, db: Session = Depends(get_db)
+) -> None:
     _operador_or_404(db, id_operador)
     row = crud_pago_operador.get_by_id(db, id_pago, id_operador)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Pago no encontrado.")
+    before = model_to_dict(row)
     crud_pago_operador.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="operador_pago",
+        entity_id=id_pago,
+        action="delete",
+        before=before,
+        meta={"id_operador": id_operador},
+    )
