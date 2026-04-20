@@ -1070,6 +1070,19 @@ _UI_TEMPLATE = """<!doctype html>
         </button>
       </div>
 
+      <div class="nav-group">
+        <div class="nav-title">Administracion</div>
+        <button
+          type="button"
+          class="nav-button"
+          data-page="usuarios-admin"
+          data-restrict-roles="admin,direccion"
+        >
+          Usuarios
+          <small>Roles, altas y contraseñas</small>
+        </button>
+      </div>
+
       <div class="sidebar-note">
         Si algo avanzado no aparece aqui, puedes usar <a href="/docs" style="color:#fff;text-decoration:underline;">Swagger</a> como respaldo.
       </div>
@@ -1086,13 +1099,12 @@ _UI_TEMPLATE = """<!doctype html>
           <span id="auth-hint">Comprobando sesión…</span>
           <a href="/login?next=/ui" id="auth-login-link" style="margin-left:10px;">Iniciar sesión (JWT)</a>
           <button type="button" id="auth-logout-btn" class="secondary-button" style="margin-left:8px;display:none;">Cerrar sesión</button>
-          <span style="margin-left:12px;opacity:0.85;">| API key desde <code>.env</code> si no hay JWT</span>
+          <span id="auth-apikey-note" style="margin-left:12px;opacity:0.85;">| Sin JWT, el panel usa <code>API_KEY</code> del servidor.</span>
         </div>
       </div>
 
       <section class="banner">
-        <div><strong>Modo guiado</strong> ahora ves una sola seccion a la vez para evitar confusion.</div>
-        <div class="meta">Abajo puedes cambiar de modulo cuando quieras.</div>
+        <div><strong>Modo guiado:</strong> solo se muestra un módulo; elija otro en el <strong>menú lateral</strong> (izquierda).</div>
       </section>
 
       <section class="page active" id="page-inicio">
@@ -2870,7 +2882,83 @@ _UI_TEMPLATE = """<!doctype html>
           </article>
           <article class="card hidden" data-flete-tab-panel="ordenes-servicio">
             <h3>Ordenes de servicio</h3>
-            <div class="hint">Compromiso entre cotizacion aceptada y ejecucion (flete, viaje, despacho). Solo consulta en este panel; altas y cambios de estatus siguen disponibles en la API (<a href="/docs">/docs</a> &mdash; ordenes-servicio).</div>
+            <div class="hint">Compromiso entre cotizacion aceptada y ejecucion (flete, viaje, despacho). Alta manual, generacion desde cotizacion <strong>aceptada</strong>, cambio de estatus y vínculos operativos desde esta pestaña (rol <strong>consulta</strong>: solo lectura).</div>
+            <div class="grid" data-orden-servicio-editor style="margin-bottom: 18px">
+              <article class="card" style="margin: 0">
+                <h4>Desde cotizacion aceptada</h4>
+                <p class="hint" style="font-size: 13px">La cotizacion debe estar en estatus <code>aceptada</code> o <code>convertida</code>.</p>
+                <form id="orden-servicio-desde-cotizacion-form">
+                  <label>ID cotizacion
+                    <input name="cotizacion_id" type="number" min="1" required />
+                  </label>
+                  <label>Fecha programada (opcional)
+                    <input name="fecha_programada" type="datetime-local" />
+                  </label>
+                  <label>Observaciones
+                    <textarea name="observaciones" rows="2"></textarea>
+                  </label>
+                  <button type="submit">Generar orden</button>
+                </form>
+                <div id="orden-servicio-desde-cot-msg" class="message" role="status"></div>
+              </article>
+              <article class="card" style="margin: 0">
+                <h4>Nueva orden (manual)</h4>
+                <p class="hint" style="font-size: 13px">Se crea en <strong>borrador</strong>; use <strong>Cambiar estatus</strong> en el detalle para avanzar el flujo.</p>
+                <form id="orden-servicio-nueva-form">
+                  <div class="two-col">
+                    <label>Cliente
+                      <select id="orden-servicio-nueva-cliente" name="cliente_id" required></select>
+                    </label>
+                    <label>Moneda
+                      <input name="moneda" type="text" value="MXN" maxlength="3" />
+                    </label>
+                    <label>ID cotizacion (opcional)
+                      <input name="cotizacion_id" type="number" min="1" />
+                    </label>
+                    <label>ID flete (opcional)
+                      <select id="orden-servicio-nueva-flete" name="flete_id"></select>
+                    </label>
+                    <label>ID viaje (opcional)
+                      <select id="orden-servicio-nueva-viaje" name="viaje_id"></select>
+                    </label>
+                    <label>ID despacho (opcional)
+                      <select id="orden-servicio-nueva-despacho" name="despacho_id"></select>
+                    </label>
+                  </div>
+                  <div class="two-col">
+                    <label>Origen
+                      <input name="origen" required maxlength="255" />
+                    </label>
+                    <label>Destino
+                      <input name="destino" required maxlength="255" />
+                    </label>
+                    <label>Tipo unidad
+                      <input name="tipo_unidad" required maxlength="64" placeholder="ej. tractocamion" />
+                    </label>
+                    <label>Tipo carga
+                      <input name="tipo_carga" maxlength="64" />
+                    </label>
+                    <label>Peso kg
+                      <input name="peso_kg" type="number" step="0.001" min="0" required />
+                    </label>
+                    <label>Distancia km (opcional)
+                      <input name="distancia_km" type="number" step="0.01" min="0" />
+                    </label>
+                    <label>Precio comprometido
+                      <input name="precio_comprometido" type="number" step="0.01" min="0" required />
+                    </label>
+                    <label>Fecha programada (opcional)
+                      <input name="fecha_programada" type="datetime-local" />
+                    </label>
+                  </div>
+                  <label>Observaciones
+                    <textarea name="observaciones" rows="2"></textarea>
+                  </label>
+                  <button type="submit">Crear borrador</button>
+                </form>
+                <div id="orden-servicio-nueva-msg" class="message" role="status"></div>
+              </article>
+            </div>
             <div class="toolbar">
               <h4>Filtrar</h4>
               <form id="orden-servicio-filter-form">
@@ -2904,7 +2992,89 @@ _UI_TEMPLATE = """<!doctype html>
             <div id="ordenes-servicio-table"></div>
             <div id="orden-servicio-detail-panel" class="toolbar hidden" aria-hidden="true">
               <h4>Detalle de orden de servicio</h4>
+              <input type="hidden" id="orden-servicio-detail-id" value="" />
               <div id="orden-servicio-detail-body" class="hint" style="white-space:pre-wrap;font-size:13px;line-height:1.5;"></div>
+              <div data-orden-servicio-editor class="card" style="margin-top:12px;padding:12px;background:rgba(0,0,0,0.15)">
+                <h4 style="margin-top:0">Cambiar estatus</h4>
+                <form id="orden-servicio-estatus-form">
+                  <div class="three-col">
+                    <label>Estatus
+                      <select id="orden-servicio-estatus-select" name="estatus" required>
+                        <option value="borrador">borrador</option>
+                        <option value="confirmada">confirmada</option>
+                        <option value="programada">programada</option>
+                        <option value="en_ejecucion">en_ejecucion</option>
+                        <option value="cerrada">cerrada</option>
+                        <option value="cancelada">cancelada</option>
+                      </select>
+                    </label>
+                    <label style="grid-column: span 2">Nota (opcional)
+                      <input name="observaciones" type="text" placeholder="Motivo o comentario del cambio" />
+                    </label>
+                  </div>
+                  <button type="submit">Aplicar estatus</button>
+                </form>
+                <div id="orden-servicio-estatus-msg" class="message" role="status"></div>
+                <h4>Datos del compromiso</h4>
+                <p class="hint" style="font-size:12px">Ruta, carga, peso, precio, moneda, fecha programada y observaciones de la orden (PATCH <code>OrdenServicioUpdate</code>).</p>
+                <form id="orden-servicio-datos-form">
+                  <div class="two-col">
+                    <label>Origen
+                      <input name="origen" required maxlength="255" autocomplete="off" />
+                    </label>
+                    <label>Destino
+                      <input name="destino" required maxlength="255" autocomplete="off" />
+                    </label>
+                    <label>Tipo unidad
+                      <input name="tipo_unidad" required maxlength="64" autocomplete="off" />
+                    </label>
+                    <label>Tipo carga
+                      <input name="tipo_carga" maxlength="64" autocomplete="off" />
+                    </label>
+                    <label>Peso kg
+                      <input name="peso_kg" type="number" step="0.001" min="0" required />
+                    </label>
+                    <label>Distancia km
+                      <input name="distancia_km" type="number" step="0.01" min="0" />
+                    </label>
+                    <label>Precio comprometido
+                      <input name="precio_comprometido" type="number" step="0.01" min="0" required />
+                    </label>
+                    <label>Moneda
+                      <input name="moneda" type="text" maxlength="3" />
+                    </label>
+                    <label>Fecha programada (opcional)
+                      <input name="fecha_programada" type="datetime-local" />
+                    </label>
+                  </div>
+                  <label>Observaciones
+                    <textarea name="observaciones" rows="2"></textarea>
+                  </label>
+                  <button type="submit">Guardar datos</button>
+                </form>
+                <div id="orden-servicio-datos-msg" class="message" role="status"></div>
+                <h4>Vinculos operativos</h4>
+                <p class="hint" style="font-size:12px"><strong>Sin cambiar:</strong> no modifica ese vínculo. <strong>Quitar vínculo:</strong> envia <code>null</code> al servidor. Los demas IDs deben existir en el catalogo.</p>
+                <form id="orden-servicio-vinculos-form">
+                  <div class="three-col">
+                    <label>Flete
+                      <select id="orden-servicio-edit-flete" name="flete_id"></select>
+                    </label>
+                    <label>Viaje
+                      <select id="orden-servicio-edit-viaje" name="viaje_id"></select>
+                    </label>
+                    <label>Despacho
+                      <select id="orden-servicio-edit-despacho" name="despacho_id"></select>
+                    </label>
+                  </div>
+                  <button type="submit">Guardar vinculos</button>
+                </form>
+                <div id="orden-servicio-vinculos-msg" class="message" role="status"></div>
+                <div id="orden-servicio-delete-msg" class="message" role="status"></div>
+                <div class="toolbar-actions" style="margin-top:10px">
+                  <button type="button" id="orden-servicio-delete-btn" class="secondary-button">Eliminar orden</button>
+                </div>
+              </div>
               <div class="toolbar-actions">
                 <button type="button" id="orden-servicio-detail-close" class="secondary-button">Cerrar</button>
               </div>
@@ -2936,7 +3106,7 @@ _UI_TEMPLATE = """<!doctype html>
             <ul class="summary-list">
               <li><strong>Nuevo flete:</strong> alta del flete; botones <strong>Cotizar venta</strong> y <strong>Cotizar compra</strong> para sugerir montos según tarifas y datos capturados.</li>
               <li><strong>Consultar y editar:</strong> filtros por texto rapido, estado, cliente y transportista; <strong>Editar</strong> abre el panel de correccion.</li>
-              <li><strong>Ordenes de servicio:</strong> solo <strong>consulta</strong> — filtros, tabla y <strong>Ver detalle</strong>. No se crean ni editan ordenes desde esta pestaña (use API <code>/ordenes-servicio</code> en <a href="/docs">/docs</a> o procesos internos).</li>
+              <li><strong>Ordenes de servicio:</strong> filtros, tabla y <strong>Ver detalle</strong> (el detalle se recarga desde el servidor). Alta desde cotizacion aceptada o manual; en el detalle puede editar estatus, datos del compromiso, vínculos y <strong>Eliminar orden</strong> (con confirmacion). El rol <strong>consulta</strong> solo ve listado y texto de detalle (sin formularios ni borrado).</li>
               <li><strong>Manual:</strong> esta guía.</li>
             </ul>
             <h4 id="manual-flete-3">3. Nuevo flete</h4>
@@ -5329,6 +5499,71 @@ _UI_TEMPLATE = """<!doctype html>
           </article>
         </div>
       </section>
+
+      <section class="page" id="page-usuarios-admin">
+        <div class="grid">
+          <article class="card" id="usuarios-self-pass-card">
+            <h3>Cambiar mi contraseña</h3>
+            <p class="hint">Solo con sesión JWT. Debe conocer su contraseña actual.</p>
+            <form id="usuarios-self-pass-form">
+              <label>Contraseña actual
+                <input name="current" type="password" required autocomplete="current-password" />
+              </label>
+              <label>Nueva contraseña
+                <input name="new1" type="password" required autocomplete="new-password" />
+              </label>
+              <label>Confirmar nueva
+                <input name="new2" type="password" required autocomplete="new-password" />
+              </label>
+              <button type="submit">Actualizar mi clave</button>
+            </form>
+            <div id="usuarios-self-pass-msg" class="message" role="status"></div>
+          </article>
+          <article class="card" id="usuarios-admin-card">
+            <h3>Usuarios del sistema</h3>
+            <p class="hint">
+              Roles <strong>admin</strong> y <strong>direccion</strong>. Dirección no puede crear ni editar cuentas con rol
+              <strong>admin</strong> (jerarquía). Con solo API key en el panel también puede operar vía API.
+            </p>
+            <form id="usuarios-create-form">
+              <h4>Nuevo usuario</h4>
+              <div class="two-col">
+                <label>Usuario
+                  <input name="username" required autocomplete="off" />
+                </label>
+                <label>Contraseña inicial
+                  <input name="password" type="password" required autocomplete="new-password" />
+                </label>
+                <label>Rol
+                  <select name="role_name" id="usuarios-create-role" required></select>
+                </label>
+                <label>Email (opcional)
+                  <input name="email" type="email" />
+                </label>
+              </div>
+              <label>Nombre completo (opcional)
+                <input name="full_name" />
+              </label>
+              <button type="submit">Crear usuario</button>
+            </form>
+            <div id="usuarios-admin-msg" class="message" role="status"></div>
+            <div style="overflow: auto; margin-top: 14px">
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+                <thead>
+                  <tr style="text-align: left; border-bottom: 1px solid #334155">
+                    <th style="padding: 6px">Id</th>
+                    <th style="padding: 6px">Usuario</th>
+                    <th style="padding: 6px">Rol</th>
+                    <th style="padding: 6px">Activo</th>
+                    <th style="padding: 6px">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="usuarios-admin-tbody"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -5409,7 +5644,7 @@ _UI_TEMPLATE = """<!doctype html>
       clientes: ["Clientes", "Alta, consulta, contactos, domicilios, condiciones y manual en pantalla con índice y visor."],
       transportistas: ["Transportistas", "Alta, consulta, contactos, documentos y manual en pantalla con índice y visor."],
       viajes: ["Viajes", "Alta, consulta y manual en pantalla con índice y visor."],
-      fletes: ["Fletes", "Alta, consulta, ordenes de servicio (solo lectura) y manual en pantalla con índice y visor."],
+      fletes: ["Fletes", "Nuevo flete, consulta y edicion, ordenes de servicio (subpestaña) y manual en pantalla."],
       facturas: ["Facturas", "Alta, consulta y manual en pantalla con índice y visor."],
       gastos: ["Gastos viaje", "Alta, consulta, presupuesto estimado y liquidación vs real."],
       tarifas: ["Tarifas", "Alta, consulta y manual en pantalla con índice y visor."],
@@ -5419,6 +5654,10 @@ _UI_TEMPLATE = """<!doctype html>
       asignaciones: ["Asignaciones", "Alta, consulta y manual en pantalla con índice y visor."],
       despachos: ["Despachos", "Alta, consulta y manual en pantalla con índice y visor."],
       seguimiento: ["Seguimiento", "Salida, evento, entrega, cierre, cancelación y manual en pantalla con índice y visor."],
+      "usuarios-admin": [
+        "Usuarios",
+        "Cambio de contraseña propio; altas y permisos por rol (admin y direccion).",
+      ],
     };
 
     const GASTO_CATEGORIA_LABELS = {
@@ -7741,8 +7980,106 @@ _UI_TEMPLATE = """<!doctype html>
       }
     }
 
+    /** Paginas permitidas por rol (JWT). Sin JWT = API key: acceso completo al menu. admin/direccion/consulta = todo el menu. */
+    const ROLE_PAGE_SET = {
+      operaciones: new Set([
+        "inicio",
+        "transportistas",
+        "viajes",
+        "fletes",
+        "operadores",
+        "unidades",
+        "asignaciones",
+        "gastos",
+        "despachos",
+        "seguimiento",
+      ]),
+      contabilidad: new Set([
+        "inicio",
+        "clientes",
+        "transportistas",
+        "viajes",
+        "fletes",
+        "facturas",
+        "gastos",
+        "tarifas",
+        "tarifas-compra",
+      ]),
+      ventas: new Set([
+        "inicio",
+        "clientes",
+        "transportistas",
+        "viajes",
+        "fletes",
+        "tarifas",
+        "tarifas-compra",
+        "facturas",
+      ]),
+    };
+
+    function sifeCanAccessPage(pageId) {
+      if (pageId === "inicio") {
+        return true;
+      }
+      if (!pageMeta[pageId]) {
+        return false;
+      }
+      if (pageId === "usuarios-admin") {
+        if (!sessionStorage.getItem("sife_access_token")) {
+          return true;
+        }
+        const r = (window.__SIFE_ROLE_NAME__ || "").trim().toLowerCase();
+        return r === "admin" || r === "direccion";
+      }
+      if (!sessionStorage.getItem("sife_access_token")) {
+        return true;
+      }
+      const role = (window.__SIFE_ROLE_NAME__ || "").trim().toLowerCase();
+      if (role === "admin" || role === "direccion" || role === "consulta") {
+        return true;
+      }
+      const allowed = ROLE_PAGE_SET[role];
+      if (!allowed) {
+        return false;
+      }
+      return allowed.has(pageId);
+    }
+
+    function applyRoleToSidebar() {
+      const hasJwt = !!sessionStorage.getItem("sife_access_token");
+      const role = (window.__SIFE_ROLE_NAME__ || "").trim().toLowerCase();
+      const showAll = !hasJwt || role === "admin" || role === "direccion" || role === "consulta";
+      for (const btn of document.querySelectorAll("button.nav-button[data-page]")) {
+        const p = btn.dataset.page;
+        if (!p) {
+          continue;
+        }
+        let ok = showAll || ROLE_PAGE_SET[role]?.has(p) || p === "inicio";
+        const restrict = (btn.getAttribute("data-restrict-roles") || "").trim();
+        if (restrict && hasJwt) {
+          const allowed = restrict.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+          if (allowed.length && !allowed.includes(role)) {
+            ok = false;
+          }
+        }
+        btn.style.display = ok ? "" : "none";
+      }
+      syncUsuariosAdminPanels();
+      syncOrdenServicioEditVisibility();
+    }
+
+    function syncOrdenServicioEditVisibility() {
+      const hasJwt = !!sessionStorage.getItem("sife_access_token");
+      const role = (window.__SIFE_ROLE_NAME__ || "").trim().toLowerCase();
+      const hideEditors = hasJwt && role === "consulta";
+      for (const el of document.querySelectorAll("[data-orden-servicio-editor]")) {
+        el.style.display = hideEditors ? "none" : "";
+      }
+    }
+
     function setPage(page) {
-      const target = pageMeta[page] ? page : "inicio";
+      const raw = pageMeta[page] ? page : "inicio";
+      const target = sifeCanAccessPage(raw) ? raw : "inicio";
       for (const section of document.querySelectorAll(".page")) {
         section.classList.toggle("active", section.id === `page-${target}`);
       }
@@ -7764,6 +8101,9 @@ _UI_TEMPLATE = """<!doctype html>
         void refreshData().catch((e) => {
           setMessage("unidad-consulta-message", e.message || "No se pudo recargar el catalogo.", "error");
         });
+      }
+      if (target === "usuarios-admin") {
+        void refreshUsuariosAdminTable();
       }
     }
 
@@ -7852,20 +8192,248 @@ _UI_TEMPLATE = """<!doctype html>
       return response.json();
     }
 
+    function syncUsuariosAdminPanels() {
+      const hasJwt = !!sessionStorage.getItem("sife_access_token");
+      const r = (window.__SIFE_ROLE_NAME__ || "").trim().toLowerCase();
+      const selfCard = document.getElementById("usuarios-self-pass-card");
+      const adminCard = document.getElementById("usuarios-admin-card");
+      if (selfCard) {
+        selfCard.style.display = hasJwt ? "" : "none";
+      }
+      if (adminCard) {
+        adminCard.style.display = !hasJwt || r === "admin" || r === "direccion" ? "" : "none";
+      }
+    }
+
+    async function refreshUsuariosAdminTable() {
+      const tbody = document.getElementById("usuarios-admin-tbody");
+      const msg = document.getElementById("usuarios-admin-msg");
+      const adminCard = document.getElementById("usuarios-admin-card");
+      if (!tbody || !adminCard || adminCard.style.display === "none") {
+        return;
+      }
+      msg.textContent = "";
+      msg.style.color = "";
+      try {
+        const rows = await api("/usuarios");
+        const roles = await api("/usuarios/roles");
+        const actor = (window.__SIFE_ROLE_NAME__ || "").trim().toLowerCase();
+        const hasJwt = !!sessionStorage.getItem("sife_access_token");
+        const canAssignAdmin = !hasJwt || actor === "admin";
+        tbody.replaceChildren();
+        for (const u of rows) {
+          const tr = document.createElement("tr");
+          tr.dataset.userId = String(u.id);
+          const tdId = document.createElement("td");
+          tdId.style.padding = "6px";
+          tdId.textContent = String(u.id);
+          const tdUser = document.createElement("td");
+          tdUser.style.padding = "6px";
+          tdUser.textContent = u.username;
+          const tdRole = document.createElement("td");
+          tdRole.style.padding = "6px";
+          const sel = document.createElement("select");
+          sel.className = "usuarios-role-sel";
+          sel.dataset.userId = String(u.id);
+          for (const ro of roles) {
+            if (!canAssignAdmin && (ro.name || "").toLowerCase() === "admin") {
+              continue;
+            }
+            const o = document.createElement("option");
+            o.value = ro.name;
+            o.textContent = ro.name;
+            if ((ro.name || "") === u.role_name) {
+              o.selected = true;
+            }
+            sel.appendChild(o);
+          }
+          tdRole.appendChild(sel);
+          const tdAct = document.createElement("td");
+          tdAct.style.padding = "6px";
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.className = "usuarios-active-cb";
+          cb.dataset.userId = String(u.id);
+          cb.checked = !!u.is_active;
+          tdAct.appendChild(cb);
+          const tdBtn = document.createElement("td");
+          tdBtn.style.padding = "6px";
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "secondary-button usuarios-pass";
+          b.dataset.userId = String(u.id);
+          b.textContent = "Nueva clave";
+          tdBtn.appendChild(b);
+          tr.appendChild(tdId);
+          tr.appendChild(tdUser);
+          tr.appendChild(tdRole);
+          tr.appendChild(tdAct);
+          tr.appendChild(tdBtn);
+          tbody.appendChild(tr);
+        }
+      } catch (e) {
+        msg.textContent = e && e.message ? e.message : "Error al cargar usuarios.";
+        msg.style.color = "#b91c1c";
+      }
+    }
+
+    async function loadUsuariosCreateRoleSelect() {
+      const sel = document.getElementById("usuarios-create-role");
+      if (!sel) {
+        return;
+      }
+      sel.replaceChildren();
+      try {
+        const roles = await api("/usuarios/roles");
+        const actor = (window.__SIFE_ROLE_NAME__ || "").trim().toLowerCase();
+        const hasJwt = !!sessionStorage.getItem("sife_access_token");
+        const canAssignAdmin = !hasJwt || actor === "admin";
+        for (const r of roles) {
+          if (!canAssignAdmin && (r.name || "").toLowerCase() === "admin") {
+            continue;
+          }
+          const o = document.createElement("option");
+          o.value = r.name;
+          o.textContent = r.name;
+          sel.appendChild(o);
+        }
+      } catch (_e) {}
+    }
+
+    function initUsuariosAdminModule() {
+      syncUsuariosAdminPanels();
+      const selfForm = document.getElementById("usuarios-self-pass-form");
+      const selfMsg = document.getElementById("usuarios-self-pass-msg");
+      if (selfForm) {
+        selfForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(selfForm);
+          if (fd.get("new1") !== fd.get("new2")) {
+            selfMsg.textContent = "Las contraseñas nuevas no coinciden.";
+            selfMsg.style.color = "#b91c1c";
+            return;
+          }
+          try {
+            await api("/auth/change-password", {
+              method: "POST",
+              body: JSON.stringify({
+                current_password: fd.get("current") || "",
+                new_password: fd.get("new1") || "",
+              }),
+            });
+            selfMsg.textContent = "Contraseña actualizada.";
+            selfMsg.style.color = "#0f766e";
+            selfForm.reset();
+          } catch (err) {
+            selfMsg.textContent = err.message || "Error";
+            selfMsg.style.color = "#b91c1c";
+          }
+        });
+      }
+      const createForm = document.getElementById("usuarios-create-form");
+      const adminMsg = document.getElementById("usuarios-admin-msg");
+      if (createForm) {
+        createForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(createForm);
+          const payload = {
+            username: (fd.get("username") || "").trim(),
+            password: fd.get("password") || "",
+            role_name: (fd.get("role_name") || "").trim(),
+            email: (fd.get("email") || "").trim() || null,
+            full_name: (fd.get("full_name") || "").trim() || null,
+          };
+          try {
+            await api("/usuarios", { method: "POST", body: JSON.stringify(payload) });
+            adminMsg.textContent = "Usuario creado.";
+            adminMsg.style.color = "#0f766e";
+            createForm.reset();
+            await loadUsuariosCreateRoleSelect();
+            await refreshUsuariosAdminTable();
+          } catch (err) {
+            adminMsg.textContent = err.message || "Error";
+            adminMsg.style.color = "#b91c1c";
+          }
+        });
+      }
+      const tbody = document.getElementById("usuarios-admin-tbody");
+      if (tbody) {
+        tbody.addEventListener("change", async (ev) => {
+          const t = ev.target;
+          if (t.classList.contains("usuarios-role-sel")) {
+            const id = parseInt(t.dataset.userId, 10);
+            try {
+              await api(`/usuarios/${id}`, {
+                method: "PATCH",
+                body: JSON.stringify({ role_name: t.value }),
+              });
+            } catch (err) {
+              window.alert(err.message || "Error");
+              void refreshUsuariosAdminTable();
+            }
+          }
+          if (t.classList.contains("usuarios-active-cb")) {
+            const id = parseInt(t.dataset.userId, 10);
+            try {
+              await api(`/usuarios/${id}`, {
+                method: "PATCH",
+                body: JSON.stringify({ is_active: t.checked }),
+              });
+            } catch (err) {
+              window.alert(err.message || "Error");
+              t.checked = !t.checked;
+            }
+          }
+        });
+        tbody.addEventListener("click", async (ev) => {
+          const btn = ev.target.closest(".usuarios-pass");
+          if (!btn) {
+            return;
+          }
+          const id = parseInt(btn.dataset.userId, 10);
+          const np = window.prompt("Nueva contraseña para este usuario:");
+          if (!np) {
+            return;
+          }
+          try {
+            await api(`/usuarios/${id}/password`, {
+              method: "POST",
+              body: JSON.stringify({ new_password: np }),
+            });
+            if (adminMsg) {
+              adminMsg.textContent = "Contraseña actualizada para id " + id + ".";
+              adminMsg.style.color = "#0f766e";
+            }
+          } catch (err) {
+            window.alert(err.message || "Error");
+          }
+        });
+      }
+      void loadUsuariosCreateRoleSelect();
+    }
+
     async function initAuthBar() {
       const hint = document.getElementById("auth-hint");
       const loginLink = document.getElementById("auth-login-link");
       const logoutBtn = document.getElementById("auth-logout-btn");
+      const apiKeyNote = document.getElementById("auth-apikey-note");
       if (!hint || !loginLink || !logoutBtn) return;
+      function setApiKeyNoteVisible(show) {
+        if (apiKeyNote) apiKeyNote.style.display = show ? "inline" : "none";
+      }
       logoutBtn.addEventListener("click", () => {
         sessionStorage.removeItem("sife_access_token");
-        window.location.reload();
+        window.__SIFE_ROLE_NAME__ = "";
+        window.location.replace("/login?next=/ui&logged_out=1");
       });
       const token = sessionStorage.getItem("sife_access_token");
+      window.__SIFE_ROLE_NAME__ = "";
       if (!token) {
-        hint.textContent = "Autenticación: API key (servidor). Pulse Iniciar sesión para JWT.";
+        hint.textContent = "Sin sesión JWT. Pulse Iniciar sesión o siga con API key del servidor.";
         loginLink.style.display = "";
         logoutBtn.style.display = "none";
+        setApiKeyNoteVisible(true);
+        applyRoleToSidebar();
         return;
       }
       try {
@@ -7874,19 +8442,36 @@ _UI_TEMPLATE = """<!doctype html>
         });
         if (!r.ok) {
           sessionStorage.removeItem("sife_access_token");
-          hint.textContent = "Autenticación: API key (servidor). Token JWT inválido o expirado.";
+          window.__SIFE_ROLE_NAME__ = "";
+          hint.textContent = "Sesión JWT no válida. Pulse Iniciar sesión de nuevo.";
           loginLink.style.display = "";
           logoutBtn.style.display = "none";
+          setApiKeyNoteVisible(true);
+          applyRoleToSidebar();
           return;
         }
         const me = await r.json();
-        hint.textContent = "Sesión: " + me.username + " (" + me.role_name + ").";
+        window.__SIFE_ROLE_NAME__ = me.role_name || "";
+        const roleLabel = (me.role_name || "").trim().toLowerCase();
+        const menuNote =
+          roleLabel &&
+          roleLabel !== "admin" &&
+          roleLabel !== "direccion" &&
+          roleLabel !== "consulta"
+            ? " Menú acotado a su rol."
+            : "";
+        hint.textContent = "Sesión: " + me.username + " (" + me.role_name + ")." + menuNote;
         loginLink.style.display = "none";
         logoutBtn.style.display = "inline-block";
+        setApiKeyNoteVisible(false);
+        applyRoleToSidebar();
       } catch (_e) {
-        hint.textContent = "Autenticación: API key (servidor). No se pudo validar JWT.";
+        window.__SIFE_ROLE_NAME__ = "";
+        hint.textContent = "No se pudo validar JWT. Pulse Iniciar sesión.";
         loginLink.style.display = "";
         logoutBtn.style.display = "none";
+        setApiKeyNoteVisible(true);
+        applyRoleToSidebar();
       }
     }
 
@@ -7951,6 +8536,22 @@ _UI_TEMPLATE = """<!doctype html>
       if (current && [...select.options].some((option) => option.value === current)) {
         select.value = current;
       }
+    }
+
+    /** Inserta opcion PATCH flete_id/viaje_id/despacho_id = null (valor interno __clear__). */
+    function addOrdenServicioVinculoClearOption(selectId) {
+      const sel = document.getElementById(selectId);
+      if (!sel || sel.options.length === 0) {
+        return;
+      }
+      if ([...sel.options].some((o) => o.value === "__clear__")) {
+        return;
+      }
+      const opt = document.createElement("option");
+      opt.value = "__clear__";
+      opt.textContent = "Quitar vínculo";
+      const first = sel.options[0];
+      sel.insertBefore(opt, first.nextSibling);
     }
 
     function fillClienteContactoEditSelect(filterText, selectedClienteId) {
@@ -8711,25 +9312,279 @@ _UI_TEMPLATE = """<!doctype html>
       return lines.join(String.fromCharCode(10));
     }
 
-    function showOrdenServicioDetail(ordenId) {
-      const o = state.ordenesServicio.find((row) => Number(row.id) === Number(ordenId));
+    function buildOrdenServicioDesdeCotizacionPayload(form) {
+      const cotizacion_id = integerOrNull(form.get("cotizacion_id"));
+      if (cotizacion_id === null || cotizacion_id < 1) {
+        throw new Error("Indique un ID de cotizacion valido.");
+      }
+      return {
+        cotizacion_id,
+        fecha_programada: normalizeDateTimeForApi(form.get("fecha_programada")),
+        observaciones: clean(form.get("observaciones")),
+      };
+    }
+
+    function buildOrdenServicioNuevaPayload(form) {
+      const cliente_id = integerOrNull(form.get("cliente_id"));
+      if (cliente_id === null || cliente_id < 1) {
+        throw new Error("Seleccione un cliente.");
+      }
+      const origen = clean(form.get("origen"));
+      const destino = clean(form.get("destino"));
+      const tipo_unidad = clean(form.get("tipo_unidad"));
+      if (!origen || !destino || !tipo_unidad) {
+        throw new Error("Complete origen, destino y tipo de unidad.");
+      }
+      const peso_kg = numberOrNull(form.get("peso_kg"));
+      if (peso_kg === null || peso_kg < 0) {
+        throw new Error("Indique peso kg valido.");
+      }
+      const precio_comprometido = numberOrNull(form.get("precio_comprometido"));
+      if (precio_comprometido === null || precio_comprometido < 0) {
+        throw new Error("Indique precio comprometido valido.");
+      }
+      const payload = {
+        cliente_id,
+        moneda: (clean(form.get("moneda")) || "MXN").toUpperCase(),
+        origen,
+        destino,
+        tipo_unidad,
+        tipo_carga: clean(form.get("tipo_carga")),
+        peso_kg,
+        precio_comprometido,
+        fecha_programada: normalizeDateTimeForApi(form.get("fecha_programada")),
+        observaciones: clean(form.get("observaciones")),
+      };
+      const cot = integerOrNull(form.get("cotizacion_id"));
+      if (cot != null) {
+        payload.cotizacion_id = cot;
+      }
+      const flete_id = integerOrNull(form.get("flete_id"));
+      if (flete_id != null) {
+        payload.flete_id = flete_id;
+      }
+      const viaje_id = integerOrNull(form.get("viaje_id"));
+      if (viaje_id != null) {
+        payload.viaje_id = viaje_id;
+      }
+      const despacho_id = integerOrNull(form.get("despacho_id"));
+      if (despacho_id != null) {
+        payload.despacho_id = despacho_id;
+      }
+      const distancia_km = numberOrNull(form.get("distancia_km"));
+      if (distancia_km != null) {
+        payload.distancia_km = distancia_km;
+      }
+      return payload;
+    }
+
+    function buildOrdenServicioDatosPayload(form) {
+      const origen = clean(form.get("origen"));
+      const destino = clean(form.get("destino"));
+      const tipo_unidad = clean(form.get("tipo_unidad"));
+      if (!origen || !destino || !tipo_unidad) {
+        throw new Error("Complete origen, destino y tipo de unidad.");
+      }
+      const peso_kg = numberOrNull(form.get("peso_kg"));
+      if (peso_kg === null || peso_kg < 0) {
+        throw new Error("Indique peso kg valido.");
+      }
+      const precio_comprometido = numberOrNull(form.get("precio_comprometido"));
+      if (precio_comprometido === null || precio_comprometido < 0) {
+        throw new Error("Indique precio comprometido valido.");
+      }
+      return {
+        origen,
+        destino,
+        tipo_unidad,
+        tipo_carga: clean(form.get("tipo_carga")),
+        peso_kg,
+        distancia_km: numberOrNull(form.get("distancia_km")),
+        precio_comprometido,
+        moneda: (clean(form.get("moneda")) || "MXN").toUpperCase(),
+        fecha_programada: normalizeDateTimeForApi(form.get("fecha_programada")),
+        observaciones: clean(form.get("observaciones")),
+      };
+    }
+
+    function applyOrdenServicioDetailToPanel(o) {
       if (!o) {
+        return;
+      }
+      const hid = document.getElementById("orden-servicio-detail-id");
+      if (hid) {
+        hid.value = String(o.id);
+      }
+      const body = document.getElementById("orden-servicio-detail-body");
+      if (body) {
+        body.textContent = renderOrdenServicioDetailBody(o);
+      }
+      const estSel = document.getElementById("orden-servicio-estatus-select");
+      if (estSel) {
+        estSel.value = o.estatus || "borrador";
+      }
+      const setSelectIfOption = (selectId, rawId) => {
+        const sel = document.getElementById(selectId);
+        if (!sel) {
+          return;
+        }
+        const v = rawId != null && rawId !== "" ? String(rawId) : "";
+        if (v && [...sel.options].some((opt) => opt.value === v)) {
+          sel.value = v;
+        } else {
+          sel.value = "";
+        }
+      };
+      setSelectIfOption("orden-servicio-edit-flete", o.flete_id);
+      setSelectIfOption("orden-servicio-edit-viaje", o.viaje_id);
+      setSelectIfOption("orden-servicio-edit-despacho", o.despacho_id);
+      const datosForm = document.getElementById("orden-servicio-datos-form");
+      if (datosForm) {
+        const origenEl = datosForm.querySelector('[name="origen"]');
+        const destinoEl = datosForm.querySelector('[name="destino"]');
+        const tipoUnidadEl = datosForm.querySelector('[name="tipo_unidad"]');
+        const tipoCargaEl = datosForm.querySelector('[name="tipo_carga"]');
+        const pesoEl = datosForm.querySelector('[name="peso_kg"]');
+        const distEl = datosForm.querySelector('[name="distancia_km"]');
+        const precioEl = datosForm.querySelector('[name="precio_comprometido"]');
+        const monedaEl = datosForm.querySelector('[name="moneda"]');
+        const fechaEl = datosForm.querySelector('[name="fecha_programada"]');
+        const obsEl = datosForm.querySelector('[name="observaciones"]');
+        if (origenEl) {
+          origenEl.value = o.origen != null ? String(o.origen) : "";
+        }
+        if (destinoEl) {
+          destinoEl.value = o.destino != null ? String(o.destino) : "";
+        }
+        if (tipoUnidadEl) {
+          tipoUnidadEl.value = o.tipo_unidad != null ? String(o.tipo_unidad) : "";
+        }
+        if (tipoCargaEl) {
+          tipoCargaEl.value = o.tipo_carga != null ? String(o.tipo_carga) : "";
+        }
+        if (pesoEl) {
+          pesoEl.value = htmlNumberInputValue(o.peso_kg);
+        }
+        if (distEl) {
+          distEl.value = htmlNumberInputValue(o.distancia_km);
+        }
+        if (precioEl) {
+          precioEl.value = htmlNumberInputValue(o.precio_comprometido);
+        }
+        if (monedaEl) {
+          monedaEl.value = o.moneda != null ? String(o.moneda) : "MXN";
+        }
+        if (fechaEl) {
+          fechaEl.value = toDateTimeLocal(o.fecha_programada);
+        }
+        if (obsEl) {
+          obsEl.value = o.observaciones != null ? String(o.observaciones) : "";
+        }
+      }
+      clearMessage("orden-servicio-estatus-msg");
+      clearMessage("orden-servicio-datos-msg");
+      clearMessage("orden-servicio-vinculos-msg");
+      clearMessage("orden-servicio-delete-msg");
+    }
+
+    async function showOrdenServicioDetail(ordenId, opts) {
+      const skipFetch = opts && opts.skipFetch === true;
+      const id = Number(ordenId);
+      if (!Number.isFinite(id) || id < 1) {
         return;
       }
       const body = document.getElementById("orden-servicio-detail-body");
       const panel = document.getElementById("orden-servicio-detail-panel");
-      if (body) {
-        body.textContent = renderOrdenServicioDetailBody(o);
+      let o = state.ordenesServicio.find((row) => Number(row.id) === id);
+      if (!skipFetch) {
+        if (body) {
+          body.textContent = "Cargando detalle…";
+        }
+        if (panel) {
+          panel.classList.remove("hidden");
+          panel.setAttribute("aria-hidden", "false");
+        }
+        try {
+          const fresh = await api(`/ordenes-servicio/${id}`);
+          const idx = state.ordenesServicio.findIndex((row) => Number(row.id) === id);
+          if (idx >= 0) {
+            state.ordenesServicio[idx] = fresh;
+          } else {
+            state.ordenesServicio.push(fresh);
+          }
+          o = fresh;
+          renderOrdenesServicio();
+        } catch (err) {
+          if (!o) {
+            if (body) {
+              body.textContent = err && err.message ? err.message : "No se pudo cargar la orden.";
+            }
+            if (panel) {
+              panel.classList.remove("hidden");
+              panel.setAttribute("aria-hidden", "false");
+            }
+            return;
+          }
+        }
+      } else if (!o) {
+        o = state.ordenesServicio.find((row) => Number(row.id) === id);
       }
+      if (!o) {
+        if (body) {
+          body.textContent = "Orden no encontrada.";
+        }
+        return;
+      }
+      applyOrdenServicioDetailToPanel(o);
       if (panel) {
         panel.classList.remove("hidden");
         panel.setAttribute("aria-hidden", "false");
-        panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        if (!skipFetch) {
+          panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
       }
     }
 
     function hideOrdenServicioDetail() {
       hidePanel("orden-servicio-detail-panel", null);
+    }
+
+    async function deleteOrdenServicioSeleccionada() {
+      clearMessage("orden-servicio-delete-msg");
+      const hid = document.getElementById("orden-servicio-detail-id");
+      const id = hid && hid.value ? integerOrNull(hid.value) : null;
+      if (id === null || id < 1) {
+        return;
+      }
+      const o = state.ordenesServicio.find((row) => Number(row.id) === id);
+      const folio = o && o.folio ? String(o.folio) : String(id);
+      if (
+        !window.confirm(
+          `¿Eliminar la orden de servicio ${folio} (ID ${id})? Esta accion no se puede deshacer. Si hay registros que dependan de ella, el servidor rechazara el borrado.`,
+        )
+      ) {
+        return;
+      }
+      try {
+        await api(`/ordenes-servicio/${id}`, { method: "DELETE" });
+        hideOrdenServicioDetail();
+        await refreshData();
+      } catch (err) {
+        setMessage("orden-servicio-delete-msg", err.message, "error");
+      }
+    }
+
+    /** Tras refreshData: actualiza texto y selects del detalle solo si el usuario sigue viendo esa orden. */
+    function refreshOrdenServicioDetailIfOpen(ordenId) {
+      const panel = document.getElementById("orden-servicio-detail-panel");
+      const hid = document.getElementById("orden-servicio-detail-id");
+      if (!panel || panel.classList.contains("hidden")) {
+        return;
+      }
+      if (!hid || String(hid.value) !== String(ordenId)) {
+        return;
+      }
+      void showOrdenServicioDetail(ordenId, { skipFetch: true });
     }
 
     function renderOrdenesServicio() {
@@ -8757,7 +9612,7 @@ _UI_TEMPLATE = """<!doctype html>
         .join("");
       const emptyMsg =
         (state.ordenesServicio || []).length === 0
-          ? "No hay ordenes de servicio. Puede crearlas por API (Swagger /docs, tag ordenes-servicio) o con el script de demo."
+          ? "No hay ordenes de servicio. Cree una con las tarjetas superiores (desde cotizacion o manual), por API en /docs (tag ordenes-servicio) o con el script de demo."
           : "Sin ordenes con ese filtro. Pruebe Limpiar o ajuste criterios.";
       const tableEl = document.getElementById("ordenes-servicio-table");
       if (!tableEl) {
@@ -10394,6 +11249,16 @@ _UI_TEMPLATE = """<!doctype html>
       fillSelect("edit-despacho-flete", state.fletes, (item) => item.id, (item) => `${item.id} - ${item.codigo_flete}`, { includeEmpty: true, emptyLabel: "Sin flete", classKey: "flete" });
 
       const despachoLabel = (item) => `${item.id_despacho} - ${item.estatus} - ${item.asignacion?.viaje?.codigo_viaje || "sin viaje"}`;
+      fillSelect("orden-servicio-nueva-cliente", state.clientes, (item) => item.id, (item) => `${item.id} - ${item.razon_social}`, { includeEmpty: false, classKey: "cliente" });
+      fillSelect("orden-servicio-nueva-flete", state.fletes, (item) => item.id, (item) => `${item.id} - ${item.codigo_flete}`, { includeEmpty: true, emptyLabel: "Sin flete", classKey: "flete" });
+      fillSelect("orden-servicio-nueva-viaje", state.viajes, (item) => item.id, (item) => `${item.id} - ${item.codigo_viaje}`, { includeEmpty: true, emptyLabel: "Sin viaje", classKey: "viaje" });
+      fillSelect("orden-servicio-nueva-despacho", state.despachos, (item) => item.id_despacho, despachoLabel, { includeEmpty: true, emptyLabel: "Sin despacho", classKey: "despacho" });
+      fillSelect("orden-servicio-edit-flete", state.fletes, (item) => item.id, (item) => `${item.id} - ${item.codigo_flete}`, { includeEmpty: true, emptyLabel: "Sin cambiar", classKey: "flete" });
+      fillSelect("orden-servicio-edit-viaje", state.viajes, (item) => item.id, (item) => `${item.id} - ${item.codigo_viaje}`, { includeEmpty: true, emptyLabel: "Sin cambiar", classKey: "viaje" });
+      fillSelect("orden-servicio-edit-despacho", state.despachos, (item) => item.id_despacho, despachoLabel, { includeEmpty: true, emptyLabel: "Sin cambiar", classKey: "despacho" });
+      addOrdenServicioVinculoClearOption("orden-servicio-edit-flete");
+      addOrdenServicioVinculoClearOption("orden-servicio-edit-viaje");
+      addOrdenServicioVinculoClearOption("orden-servicio-edit-despacho");
       fillSelect("salida-despacho", state.despachos, (item) => item.id_despacho, despachoLabel, { includeEmpty: false, classKey: "despacho" });
       fillSelect("evento-despacho", state.despachos, (item) => item.id_despacho, despachoLabel, { includeEmpty: false, classKey: "despacho" });
       fillSelect("entrega-despacho", state.despachos, (item) => item.id_despacho, despachoLabel, { includeEmpty: false, classKey: "despacho" });
@@ -10615,6 +11480,16 @@ _UI_TEMPLATE = """<!doctype html>
       wireImplicitSubmitGuard("asignacion-form");
       enableEnterToNextField("despacho-form");
       wireImplicitSubmitGuard("despacho-form");
+      enableEnterToNextField("orden-servicio-desde-cotizacion-form");
+      wireImplicitSubmitGuard("orden-servicio-desde-cotizacion-form");
+      enableEnterToNextField("orden-servicio-nueva-form");
+      wireImplicitSubmitGuard("orden-servicio-nueva-form");
+      enableEnterToNextField("orden-servicio-estatus-form");
+      wireImplicitSubmitGuard("orden-servicio-estatus-form");
+      enableEnterToNextField("orden-servicio-datos-form");
+      wireImplicitSubmitGuard("orden-servicio-datos-form");
+      enableEnterToNextField("orden-servicio-vinculos-form");
+      wireImplicitSubmitGuard("orden-servicio-vinculos-form");
       enableEnterToNextField("salida-form");
       wireImplicitSubmitGuard("salida-form");
       enableEnterToNextField("evento-form");
@@ -10976,6 +11851,137 @@ _UI_TEMPLATE = """<!doctype html>
         observaciones_transito: clean(form.get("observaciones_transito")),
       }), (payload) => api("/despachos", { method: "POST", body: JSON.stringify(payload) }), "Despacho guardado.");
 
+      attachSubmit(
+        "orden-servicio-desde-cotizacion-form",
+        "orden-servicio-desde-cot-msg",
+        (form) => buildOrdenServicioDesdeCotizacionPayload(form),
+        (payload) => api("/ordenes-servicio/desde-cotizacion", { method: "POST", body: JSON.stringify(payload) }),
+        "Orden generada desde cotizacion.",
+      );
+      attachSubmit(
+        "orden-servicio-nueva-form",
+        "orden-servicio-nueva-msg",
+        (form) => buildOrdenServicioNuevaPayload(form),
+        (payload) => api("/ordenes-servicio", { method: "POST", body: JSON.stringify(payload) }),
+        "Orden creada en borrador.",
+      );
+
+      const osEstatusForm = document.getElementById("orden-servicio-estatus-form");
+      if (osEstatusForm) {
+        osEstatusForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          clearMessage("orden-servicio-estatus-msg");
+          const hid = document.getElementById("orden-servicio-detail-id");
+          const id = hid && hid.value ? integerOrNull(hid.value) : null;
+          if (id === null || id < 1) {
+            setMessage("orden-servicio-estatus-msg", "No hay orden seleccionada.", "error");
+            return;
+          }
+          const fd = new FormData(osEstatusForm);
+          const estatus = clean(fd.get("estatus"));
+          if (!estatus) {
+            setMessage("orden-servicio-estatus-msg", "Seleccione un estatus.", "error");
+            return;
+          }
+          try {
+            await api(`/ordenes-servicio/${id}/estatus`, {
+              method: "POST",
+              body: JSON.stringify({ estatus, observaciones: clean(fd.get("observaciones")) }),
+            });
+            setMessage("orden-servicio-estatus-msg", "Estatus actualizado.", "ok");
+            const noteEl = osEstatusForm.querySelector('[name="observaciones"]');
+            if (noteEl) {
+              noteEl.value = "";
+            }
+            await refreshData();
+            refreshOrdenServicioDetailIfOpen(id);
+          } catch (error) {
+            setMessage("orden-servicio-estatus-msg", error.message, "error");
+          }
+        });
+      }
+
+      const osDatosForm = document.getElementById("orden-servicio-datos-form");
+      if (osDatosForm) {
+        osDatosForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          clearMessage("orden-servicio-datos-msg");
+          const hid = document.getElementById("orden-servicio-detail-id");
+          const id = hid && hid.value ? integerOrNull(hid.value) : null;
+          if (id === null || id < 1) {
+            setMessage("orden-servicio-datos-msg", "No hay orden seleccionada.", "error");
+            return;
+          }
+          try {
+            const fd = new FormData(osDatosForm);
+            const payload = buildOrdenServicioDatosPayload(fd);
+            await api(`/ordenes-servicio/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+            setMessage("orden-servicio-datos-msg", "Datos guardados.", "ok");
+            await refreshData();
+            refreshOrdenServicioDetailIfOpen(id);
+          } catch (error) {
+            setMessage("orden-servicio-datos-msg", error.message, "error");
+          }
+        });
+      }
+
+      const osVinculosForm = document.getElementById("orden-servicio-vinculos-form");
+      if (osVinculosForm) {
+        osVinculosForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          clearMessage("orden-servicio-vinculos-msg");
+          const hid = document.getElementById("orden-servicio-detail-id");
+          const id = hid && hid.value ? integerOrNull(hid.value) : null;
+          if (id === null || id < 1) {
+            setMessage("orden-servicio-vinculos-msg", "No hay orden seleccionada.", "error");
+            return;
+          }
+          const fd = new FormData(osVinculosForm);
+          const payload = {};
+          const parseVin = (field) => {
+            const raw = fd.get(field);
+            if (raw != null && String(raw) === "__clear__") {
+              return { kind: "clear" };
+            }
+            const id = integerOrNull(raw);
+            if (id != null) {
+              return { kind: "set", id };
+            }
+            return { kind: "omit" };
+          };
+          const pf = parseVin("flete_id");
+          if (pf.kind === "clear") {
+            payload.flete_id = null;
+          } else if (pf.kind === "set") {
+            payload.flete_id = pf.id;
+          }
+          const pv = parseVin("viaje_id");
+          if (pv.kind === "clear") {
+            payload.viaje_id = null;
+          } else if (pv.kind === "set") {
+            payload.viaje_id = pv.id;
+          }
+          const pd = parseVin("despacho_id");
+          if (pd.kind === "clear") {
+            payload.despacho_id = null;
+          } else if (pd.kind === "set") {
+            payload.despacho_id = pd.id;
+          }
+          if (Object.keys(payload).length === 0) {
+            setMessage("orden-servicio-vinculos-msg", "Seleccione al menos un vinculo a actualizar.", "error");
+            return;
+          }
+          try {
+            await api(`/ordenes-servicio/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+            setMessage("orden-servicio-vinculos-msg", "Vinculos actualizados.", "ok");
+            await refreshData();
+            refreshOrdenServicioDetailIfOpen(id);
+          } catch (error) {
+            setMessage("orden-servicio-vinculos-msg", error.message, "error");
+          }
+        });
+      }
+
       document.getElementById("salida-form").addEventListener("submit", async (event) => {
         event.preventDefault();
         clearMessage("salida-message");
@@ -11319,6 +12325,9 @@ _UI_TEMPLATE = """<!doctype html>
         });
         document.getElementById("orden-servicio-detail-close")?.addEventListener("click", () => {
           hideOrdenServicioDetail();
+        });
+        document.getElementById("orden-servicio-delete-btn")?.addEventListener("click", () => {
+          void deleteOrdenServicioSeleccionada();
         });
       }
 
@@ -11926,8 +12935,8 @@ _UI_TEMPLATE = """<!doctype html>
     }
 
     async function boot() {
-      initNavigation();
       await initAuthBar();
+      initNavigation();
       installCaptureFormCancelButtons();
       initForms();
       wireMoneyInputs();
@@ -11940,6 +12949,7 @@ _UI_TEMPLATE = """<!doctype html>
       initFacturaModule();
       initFilters();
       initTarifaVentaNombreUnico();
+      initUsuariosAdminModule();
       initEditors();
       initFleteCotizador();
       wireEnterAvanzaCampo("#flete-form");

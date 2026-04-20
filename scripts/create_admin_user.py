@@ -1,10 +1,15 @@
 """
-Crea el primer usuario administrador (rol admin).
+Crea o actualiza un usuario con el rol indicado (por defecto admin).
 
-Uso (con virtualenv activado, desde la raiz del proyecto):
+Uso (virtualenv activado, raiz del proyecto):
   python scripts/create_admin_user.py --username admin --password "TuPasswordSeguro"
+  python scripts/create_admin_user.py --username jdoe --password "Clave123" --role operaciones
 
-Requiere: migracion 0019 aplicada, JWT_SECRET_KEY en .env (para login posterior).
+Si el usuario ya existe y quieres cambiar contraseña (y opcionalmente rol):
+  python scripts/create_admin_user.py --username admin --password "NuevaClave" --reset
+  python scripts/create_admin_user.py --username jdoe --password "X" --reset --role contabilidad
+
+Requiere migraciones aplicadas y JWT_SECRET_KEY en .env para login JWT posterior.
 """
 from __future__ import annotations
 
@@ -26,24 +31,51 @@ from app.models.user import User
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Alta usuario admin en SIFE-MXN")
+    p = argparse.ArgumentParser(description="Alta o reset de usuario SIFE-MXN")
     p.add_argument("--username", required=True)
     p.add_argument("--password", required=True)
+    p.add_argument(
+        "--role",
+        default="admin",
+        help="Nombre del rol en BD: admin, direccion, operaciones, contabilidad, ventas, consulta",
+    )
     p.add_argument("--email", default="", help="Opcional")
     p.add_argument("--full-name", default="", dest="full_name")
+    p.add_argument(
+        "--reset",
+        action="store_true",
+        help="Si el usuario ya existe, actualizar contraseña (y rol con --role).",
+    )
     args = p.parse_args()
 
     db: Session = SessionLocal()
     try:
-        existing = db.execute(select(User).where(User.username == args.username.strip())).scalar_one_or_none()
-        if existing:
-            print("Error: ya existe un usuario con ese nombre.", file=sys.stderr)
+        role_name = args.role.strip()
+        role = db.execute(select(Role).where(Role.name == role_name)).scalar_one_or_none()
+        if role is None:
+            print(
+                f"Error: rol '{role_name}' no encontrado. Aplique migraciones o use un rol valido.",
+                file=sys.stderr,
+            )
             return 1
 
-        role = db.execute(select(Role).where(Role.name == "admin")).scalar_one_or_none()
-        if role is None:
-            print("Error: rol 'admin' no encontrado. Aplique migraciones: alembic upgrade head", file=sys.stderr)
-            return 1
+        existing = db.execute(select(User).where(User.username == args.username.strip())).scalar_one_or_none()
+        if existing:
+            if not args.reset:
+                print("Error: ya existe un usuario con ese nombre. Use --reset.", file=sys.stderr)
+                return 1
+            existing.hashed_password = hash_password(args.password)
+            existing.role_id = role.id
+            if args.email.strip():
+                existing.email = args.email.strip()
+            if args.full_name.strip():
+                existing.full_name = args.full_name.strip()
+            existing.is_active = True
+            db.commit()
+            print(
+                f"Usuario actualizado: id={existing.id} username={existing.username} rol={role_name}",
+            )
+            return 0
 
         user = User(
             username=args.username.strip(),
@@ -55,7 +87,7 @@ def main() -> int:
         )
         db.add(user)
         db.commit()
-        print(f"Usuario creado: id={user.id} username={user.username} rol=admin")
+        print(f"Usuario creado: id={user.id} username={user.username} rol={role_name}")
         return 0
     finally:
         db.close()

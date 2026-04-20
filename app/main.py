@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.openapi.utils import get_openapi
 
-from app.api.deps import require_auth
+from app.api.rbac import require_rbac
 from app.api.routes import api_router
 from app.api.routes import auth as auth_routes
 from app.core.config import settings
@@ -42,7 +42,8 @@ app = FastAPI(
             "name": "cumplimiento-documental",
             "description": "Requisitos de documentación (Carta Porte, SCT, operador) y validación previa a salida.",
         },
-        {"name": "auth", "description": "Login JWT y perfil de usuario (Bearer)."},
+        {"name": "auth", "description": "Login JWT, perfil y cambio de contraseña propia (Bearer)."},
+        {"name": "usuarios", "description": "Alta y mantenimiento de usuarios y roles (JWT admin o direccion; API key sin filtro de rol)."},
         {"name": "sistema", "description": "Comprobación de disponibilidad del servicio."},
     ],
 )
@@ -55,7 +56,7 @@ app.include_router(
 app.include_router(
     api_router,
     prefix=settings.API_V1_PREFIX,
-    dependencies=[Depends(require_auth)],
+    dependencies=[Depends(require_rbac)],
 )
 app.include_router(web_router)
 

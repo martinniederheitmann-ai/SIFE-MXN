@@ -14,6 +14,7 @@ from . import tarifas_compra_transportista as tarifas_compra_transportista_route
 from . import tarifas_flete as tarifas_flete_routes
 from . import transportistas as transportistas_routes
 from . import unidades as unidades_routes
+from . import usuarios as usuarios_routes
 from . import viajes as viajes_routes
 
 api_router = APIRouter()
@@ -44,3 +45,4 @@ api_router.include_router(despachos_routes.router, prefix="/despachos", tags=["d
 api_router.include_router(
     cumplimiento_routes.router, prefix="/cumplimiento", tags=["cumplimiento-documental"]
 )
+api_router.include_router(usuarios_routes.router, prefix="/usuarios", tags=["usuarios"])

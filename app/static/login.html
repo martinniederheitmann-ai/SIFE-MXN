@@ -17,6 +17,7 @@
 </head>
 <body>
   <h1>Iniciar sesión</h1>
+  <p id="logged-out-msg" class="hint" style="color:#0f766e;display:none;" hidden></p>
   <p class="hint">Tras entrar, el panel usará su token JWT. Si no inicia sesión, el servidor puede seguir inyectando la API key en <code>/ui</code> como hasta ahora.</p>
   <form id="login-form">
     <label>Usuario
@@ -31,6 +32,17 @@
   <p class="hint"><a href="/ui">Volver al panel</a> · <a href="/docs">Documentación API</a></p>
   <script>
     const API_BASE = __API_V1_PREFIX__;
+    (function () {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("logged_out") === "1") {
+        const el = document.getElementById("logged-out-msg");
+        if (el) {
+          el.textContent = "Sesión cerrada. Puede entrar de nuevo o volver al panel (el servidor seguirá usando API key si no hay JWT).";
+          el.hidden = false;
+          el.style.display = "block";
+        }
+      }
+    })();
     document.getElementById("login-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const msg = document.getElementById("msg");

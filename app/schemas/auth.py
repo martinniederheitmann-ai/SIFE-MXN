@@ -7,6 +7,11 @@ class TokenResponse(BaseModel):
     expires_in: int = Field(description="Segundos de validez del token.")
 
 
+class PasswordChangeBody(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=1, max_length=128)
+
+
 class UserPublic(BaseModel):
     id: int
     username: str

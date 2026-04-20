@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -8,9 +7,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user_jwt, get_db, user_to_public
 from app.models.user import User
 from app.core.config import settings
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token, hash_password, verify_password
 from app.crud import user as user_crud
-from app.schemas.auth import TokenResponse, UserPublic
+from app.schemas.auth import PasswordChangeBody, TokenResponse, UserPublic
 
 router = APIRouter()
 
@@ -55,3 +54,23 @@ def login(
 )
 def me(user: User = Depends(get_current_user_jwt)) -> UserPublic:
     return user_to_public(user)
+
+
+@router.post(
+    "/change-password",
+    summary="Cambiar la propia contraseña (JWT)",
+)
+def change_password(
+    body: PasswordChangeBody,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user_jwt),
+) -> dict:
+    if not verify_password(body.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Contraseña actual incorrecta.",
+        )
+    user.hashed_password = hash_password(body.new_password)
+    db.add(user)
+    db.commit()
+    return {"ok": True}

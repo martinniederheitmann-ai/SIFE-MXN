@@ -54,7 +54,25 @@ Rutas útiles:
 python scripts/create_admin_user.py --username admin --password "TuPasswordSeguro"
 ```
 
-Roles iniciales en base de datos: `admin`, `operaciones`, `contabilidad`, `ventas`, `consulta` (los permisos por pantalla se pueden afinar en versiones siguientes).
+Otro rol (ej. dirección u operaciones):
+
+```powershell
+python scripts/create_admin_user.py --username paty --password "ClaveSegura" --role direccion
+```
+
+Si el usuario ya existe y olvidaste la contraseña (opcional `--role` para cambiar categoría):
+
+```powershell
+python scripts/create_admin_user.py --username admin --password "TuPasswordSeguro" --reset
+```
+
+**Gestión en panel:** menú **Administración → Usuarios** (solo JWT con rol `admin` o `direccion`). Ahí: alta, cambio de rol, activar/desactivar, nueva clave; y **cambiar la propia contraseña** con sesión JWT. **Jerarquía:** `direccion` no puede crear ni modificar usuarios con rol `admin` (solo `admin` gestiona cuentas `admin`). **API:** `GET/POST /api/v1/usuarios`, `PATCH /api/v1/usuarios/{id}`, `POST /api/v1/usuarios/{id}/password`, `GET /api/v1/usuarios/roles`; **propio:** `POST /api/v1/auth/change-password`.
+
+Roles en base de datos: `admin`, `direccion` (dirección general: **mismo alcance** que `admin` en panel y API), `operaciones`, `contabilidad`, `ventas`, `consulta` (este último: solo lectura en API).
+
+**Panel `/ui` con JWT:** el menú lateral **oculta módulos** según el rol (`admin` y `consulta` ven todo; `operaciones`, `contabilidad` y `ventas` ven un subconjunto). Sin sesión JWT el panel sigue usando solo `API_KEY` y muestra **todo** el menú (comportamiento anterior).
+
+**API con JWT:** las rutas bajo `/api/v1` (excepto `/auth`) aplican **RBAC** alineado con ese menú: con **API key** el acceso sigue siendo total; con **Bearer**, `admin` todo; `consulta` solo **lectura**; los demás roles solo los prefijos permitidos (ver `app/api/rbac.py`).
 
 ## Base de datos MySQL
 
