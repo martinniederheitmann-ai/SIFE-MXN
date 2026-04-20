@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -19,6 +19,7 @@ from app.schemas.factura import (
     FacturaUpdate,
 )
 from app.services.facturacion_flete import construir_factura_create, construir_preview
+from app.services.audit import model_to_dict, write_audit_log
 
 router = APIRouter()
 
@@ -46,7 +47,7 @@ def _validar_fks(
 
 
 @router.post("", response_model=FacturaRead, status_code=status.HTTP_201_CREATED, summary="Crear factura")
-def crear_factura(payload: FacturaCreate, db: Session = Depends(get_db)) -> FacturaRead:
+def crear_factura(payload: FacturaCreate, request: Request, db: Session = Depends(get_db)) -> FacturaRead:
     _validar_fks(
         db,
         cliente_id=payload.cliente_id,
@@ -60,6 +61,14 @@ def crear_factura(payload: FacturaCreate, db: Session = Depends(get_db)) -> Fact
             "folio": crud_factura.next_folio(db),
             "estatus": payload.estatus or EstatusFactura.BORRADOR,
         },
+    )
+    write_audit_log(
+        db,
+        request,
+        entity="factura",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
     )
     return FacturaRead.model_validate(row)
 
@@ -94,6 +103,7 @@ def preview_factura_desde_flete(
 )
 def generar_factura_desde_flete(
     payload: FacturaGenerarDesdeFlete,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> FacturaRead:
     try:
@@ -132,6 +142,15 @@ def generar_factura_desde_flete(
             "estatus": create.estatus or EstatusFactura.BORRADOR,
         },
     )
+    write_audit_log(
+        db,
+        request,
+        entity="factura",
+        entity_id=row.id,
+        action="create_desde_flete",
+        after=model_to_dict(row),
+        meta={"flete_id": payload.flete_id},
+    )
     return FacturaRead.model_validate(row)
 
 
@@ -169,9 +188,11 @@ def obtener_factura(factura_id: int, db: Session = Depends(get_db)) -> FacturaRe
 def actualizar_factura(
     factura_id: int,
     payload: FacturaUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> FacturaRead:
     row = _factura_or_404(db, factura_id)
+    before = model_to_dict(row)
     dump = payload.model_dump(exclude_unset=True)
     _validar_fks(
         db,
@@ -180,9 +201,28 @@ def actualizar_factura(
         orden_servicio_id=dump.get("orden_servicio_id", row.orden_servicio_id),
     )
     updated = crud_factura.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="factura",
+        entity_id=factura_id,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+    )
     return FacturaRead.model_validate(updated)
 
 
 @router.delete("/{factura_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar factura")
-def eliminar_factura(factura_id: int, db: Session = Depends(get_db)) -> None:
-    crud_factura.delete(db, _factura_or_404(db, factura_id))
+def eliminar_factura(factura_id: int, request: Request, db: Session = Depends(get_db)) -> None:
+    row = _factura_or_404(db, factura_id)
+    before = model_to_dict(row)
+    crud_factura.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="factura",
+        entity_id=factura_id,
+        action="delete",
+        before=before,
+    )

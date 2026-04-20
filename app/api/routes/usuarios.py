@@ -1,8 +1,8 @@
-"""Alta y mantenimiento de usuarios (JWT admin/direccion; API key sin restriccion de rol)."""
+"""Alta y mantenimiento de usuarios (JWT admin/direccion)."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import AuthContext, get_db
@@ -17,6 +17,7 @@ from app.schemas.usuario_admin import (
     UsuarioListaItem,
     UsuarioPasswordAdmin,
 )
+from app.services.audit import model_to_dict, write_audit_log
 
 router = APIRouter()
 
@@ -100,6 +101,7 @@ def list_usuarios(
 )
 def crear_usuario(
     body: UsuarioCrear,
+    request: Request,
     db: Session = Depends(get_db),
     auth: AuthContext = Depends(require_user_manager),
 ):
@@ -122,6 +124,14 @@ def crear_usuario(
     )
     u = user_crud.get_by_id(db, u.id)
     assert u is not None
+    write_audit_log(
+        db,
+        request,
+        entity="usuario",
+        entity_id=u.id,
+        action="create",
+        after=model_to_dict(u),
+    )
     return UsuarioListaItem(
         id=u.id,
         username=u.username,
@@ -136,6 +146,7 @@ def crear_usuario(
 def actualizar_usuario(
     user_id: int,
     body: UsuarioActualizar,
+    request: Request,
     db: Session = Depends(get_db),
     auth: AuthContext = Depends(require_user_manager),
 ):
@@ -143,6 +154,7 @@ def actualizar_usuario(
     u = user_crud.get_by_id(db, user_id)
     if u is None:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    before = model_to_dict(u)
     new_role_name = body.role_name.strip() if body.role_name else None
     _deny_direccion_on_admin(actor=actor, target=u, new_role=new_role_name)
     if body.email is not None:
@@ -161,6 +173,15 @@ def actualizar_usuario(
     db.refresh(u)
     u = user_crud.get_by_id(db, user_id)
     assert u is not None
+    write_audit_log(
+        db,
+        request,
+        entity="usuario",
+        entity_id=user_id,
+        action="update",
+        before=before,
+        after=model_to_dict(u),
+    )
     return UsuarioListaItem(
         id=u.id,
         username=u.username,
@@ -175,6 +196,7 @@ def actualizar_usuario(
 def set_password_admin(
     user_id: int,
     body: UsuarioPasswordAdmin,
+    request: Request,
     db: Session = Depends(get_db),
     auth: AuthContext = Depends(require_user_manager),
 ):
@@ -183,7 +205,17 @@ def set_password_admin(
     if u is None:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
     _deny_direccion_on_admin(actor=actor, target=u, new_role=None)
+    before = model_to_dict(u)
     u.hashed_password = hash_password(body.new_password)
     db.add(u)
     db.commit()
+    write_audit_log(
+        db,
+        request,
+        entity="usuario",
+        entity_id=user_id,
+        action="set_password",
+        before={**before, "hashed_password": "***"},
+        after={"hashed_password": "***"},
+    )
     return {"ok": True}

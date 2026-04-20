@@ -1,6 +1,7 @@
 from app.models.base import Base
 from app.models.role import Role
 from app.models.asignacion import Asignacion
+from app.models.audit_log import AuditLog
 from app.models.cliente import (
     Cliente,
     ClienteCondicionComercial,
@@ -30,6 +31,7 @@ from app.models.viaje import Viaje
 
 __all__ = [
     "Asignacion",
+    "AuditLog",
     "Base",
     "Cliente",
     "ClienteCondicionComercial",

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -12,6 +12,7 @@ from app.schemas.tarifa_compra_transportista import (
     TarifaCompraTransportistaRead,
     TarifaCompraTransportistaUpdate,
 )
+from app.services.audit import model_to_dict, write_audit_log
 
 router = APIRouter()
 
@@ -50,11 +51,21 @@ def _validar_coherencia_tipo_transportista(
 )
 def crear_tarifa_compra_transportista(
     payload: TarifaCompraTransportistaCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TarifaCompraTransportistaRead:
     _validar_transportista(db, payload.transportista_id)
     _validar_coherencia_tipo_transportista(db, payload.transportista_id, payload.tipo_transportista)
-    return TarifaCompraTransportistaRead.model_validate(crud_tarifa_compra.create(db, payload))
+    row = crud_tarifa_compra.create(db, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="tarifa_compra_transportista",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
+    return TarifaCompraTransportistaRead.model_validate(row)
 
 
 @router.get(
@@ -112,9 +123,11 @@ def obtener_tarifa_compra_transportista(
 def actualizar_tarifa_compra_transportista(
     tarifa_id: int,
     payload: TarifaCompraTransportistaUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TarifaCompraTransportistaRead:
     row = _tarifa_or_404(db, tarifa_id)
+    before = model_to_dict(row)
     dump = payload.model_dump(exclude_unset=True)
     if "transportista_id" in dump and dump["transportista_id"] is not None:
         _validar_transportista(db, dump["transportista_id"])
@@ -122,7 +135,17 @@ def actualizar_tarifa_compra_transportista(
     ttipo = dump.get("tipo_transportista", row.tipo_transportista)
     if "transportista_id" in dump or "tipo_transportista" in dump:
         _validar_coherencia_tipo_transportista(db, tid, ttipo)
-    return TarifaCompraTransportistaRead.model_validate(crud_tarifa_compra.update(db, row, payload))
+    updated = crud_tarifa_compra.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="tarifa_compra_transportista",
+        entity_id=tarifa_id,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+    )
+    return TarifaCompraTransportistaRead.model_validate(updated)
 
 
 @router.delete(
@@ -132,6 +155,17 @@ def actualizar_tarifa_compra_transportista(
 )
 def eliminar_tarifa_compra_transportista(
     tarifa_id: int,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> None:
-    crud_tarifa_compra.delete(db, _tarifa_or_404(db, tarifa_id))
+    row = _tarifa_or_404(db, tarifa_id)
+    before = model_to_dict(row)
+    crud_tarifa_compra.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="tarifa_compra_transportista",
+        entity_id=tarifa_id,
+        action="delete",
+        before=before,
+    )

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -31,6 +31,7 @@ from app.schemas.flete import (
 )
 from app.services.cotizacion_compra import cotizar_compra_con_tarifa as cotizar_compra_svc
 from app.services.cotizacion_flete import cotizar_venta_con_tarifa
+from app.services.audit import model_to_dict, write_audit_log
 
 router = APIRouter()
 
@@ -102,7 +103,7 @@ def _validar_fks(
 
 
 @router.post("", response_model=FleteRead, status_code=status.HTTP_201_CREATED, summary="Crear flete")
-def crear_flete(payload: FleteCreate, db: Session = Depends(get_db)) -> FleteRead:
+def crear_flete(payload: FleteCreate, request: Request, db: Session = Depends(get_db)) -> FleteRead:
     if crud_flete.get_by_codigo(db, payload.codigo_flete):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -115,6 +116,14 @@ def crear_flete(payload: FleteCreate, db: Session = Depends(get_db)) -> FleteRea
         viaje_id=payload.viaje_id,
     )
     row = crud_flete.create(db, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="flete",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
     return FleteRead.model_validate(row)
 
 
@@ -315,11 +324,12 @@ def obtener_flete(flete_id: int, db: Session = Depends(get_db)) -> FleteRead:
 
 @router.patch("/{flete_id}", response_model=FleteRead, summary="Actualizar flete")
 def actualizar_flete(
-    flete_id: int, payload: FleteUpdate, db: Session = Depends(get_db)
+    flete_id: int, payload: FleteUpdate, request: Request, db: Session = Depends(get_db)
 ) -> FleteRead:
     row = crud_flete.get_by_id(db, flete_id)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Flete no encontrado.")
+    before = model_to_dict(row)
     if payload.codigo_flete is not None and payload.codigo_flete != row.codigo_flete:
         if crud_flete.get_by_codigo(db, payload.codigo_flete):
             raise HTTPException(
@@ -332,12 +342,30 @@ def actualizar_flete(
     vid = dump["viaje_id"] if "viaje_id" in dump else row.viaje_id
     _validar_fks(db, cliente_id=cid, transportista_id=tid, viaje_id=vid)
     updated = crud_flete.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="flete",
+        entity_id=flete_id,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+    )
     return FleteRead.model_validate(updated)
 
 
 @router.delete("/{flete_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar flete")
-def eliminar_flete(flete_id: int, db: Session = Depends(get_db)) -> None:
+def eliminar_flete(flete_id: int, request: Request, db: Session = Depends(get_db)) -> None:
     row = crud_flete.get_by_id(db, flete_id)
     if not row:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Flete no encontrado.")
+    before = model_to_dict(row)
     crud_flete.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="flete",
+        entity_id=flete_id,
+        action="delete",
+        before=before,
+    )

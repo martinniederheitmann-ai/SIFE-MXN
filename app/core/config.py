@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     API_KEY: str = "cambia-esta-api-key"
     API_KEY_HEADER: str = "X-API-Key"
+    API_KEY_DENY_PREFIXES: str = "usuarios,direccion"
+    API_KEY_WRITE_DENY_PREFIXES: str = "usuarios,direccion"
 
     MYSQL_USER: str = "root"
     MYSQL_PASSWORD: str = ""

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -11,6 +11,7 @@ from app.schemas.tarifa_flete import (
     TarifaFleteRead,
     TarifaFleteUpdate,
 )
+from app.services.audit import model_to_dict, write_audit_log
 
 router = APIRouter()
 
@@ -23,13 +24,24 @@ def _tarifa_or_404(db: Session, tarifa_id: int):
 
 
 @router.post("", response_model=TarifaFleteRead, status_code=status.HTTP_201_CREATED, summary="Crear tarifa de flete")
-def crear_tarifa_flete(payload: TarifaFleteCreate, db: Session = Depends(get_db)) -> TarifaFleteRead:
+def crear_tarifa_flete(
+    payload: TarifaFleteCreate, request: Request, db: Session = Depends(get_db)
+) -> TarifaFleteRead:
     if crud_tarifa_flete.get_active_duplicate_nombre(db, payload.nombre_tarifa):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             "Este nombre de tarifa ya está en uso por otra tarifa activa. Usa otro nombre distintivo.",
         )
-    return TarifaFleteRead.model_validate(crud_tarifa_flete.create(db, payload))
+    row = crud_tarifa_flete.create(db, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="tarifa_flete",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
+    return TarifaFleteRead.model_validate(row)
 
 
 @router.get("", response_model=TarifaFleteListResponse, summary="Listar tarifas de flete")
@@ -68,9 +80,10 @@ def obtener_tarifa_flete(tarifa_id: int, db: Session = Depends(get_db)) -> Tarif
 
 @router.patch("/{tarifa_id}", response_model=TarifaFleteRead, summary="Actualizar tarifa de flete")
 def actualizar_tarifa_flete(
-    tarifa_id: int, payload: TarifaFleteUpdate, db: Session = Depends(get_db)
+    tarifa_id: int, payload: TarifaFleteUpdate, request: Request, db: Session = Depends(get_db)
 ) -> TarifaFleteRead:
     row = _tarifa_or_404(db, tarifa_id)
+    before = model_to_dict(row)
     partial = payload.model_dump(exclude_unset=True)
     nombre_final = partial.get("nombre_tarifa", row.nombre_tarifa)
     activo_final = partial["activo"] if "activo" in partial else row.activo
@@ -81,9 +94,29 @@ def actualizar_tarifa_flete(
             status.HTTP_409_CONFLICT,
             "Este nombre de tarifa ya está en uso por otra tarifa activa. Usa otro nombre distintivo.",
         )
-    return TarifaFleteRead.model_validate(crud_tarifa_flete.update(db, row, payload))
+    updated = crud_tarifa_flete.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="tarifa_flete",
+        entity_id=tarifa_id,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+    )
+    return TarifaFleteRead.model_validate(updated)
 
 
 @router.delete("/{tarifa_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar tarifa de flete")
-def eliminar_tarifa_flete(tarifa_id: int, db: Session = Depends(get_db)) -> None:
-    crud_tarifa_flete.delete(db, _tarifa_or_404(db, tarifa_id))
+def eliminar_tarifa_flete(tarifa_id: int, request: Request, db: Session = Depends(get_db)) -> None:
+    row = _tarifa_or_404(db, tarifa_id)
+    before = model_to_dict(row)
+    crud_tarifa_flete.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="tarifa_flete",
+        entity_id=tarifa_id,
+        action="delete",
+        before=before,
+    )

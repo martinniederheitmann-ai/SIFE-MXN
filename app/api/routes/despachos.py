@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -22,6 +22,7 @@ from app.schemas.despacho import (
     DespachoUpdate,
 )
 from app.services.cumplimiento_documental import validar_salida_por_despacho
+from app.services.audit import model_to_dict, write_audit_log
 
 router = APIRouter()
 
@@ -83,7 +84,7 @@ def _sync_relations(db: Session, despacho: Despacho) -> Despacho:
 
 
 @router.post("", response_model=DespachoRead, status_code=status.HTTP_201_CREATED, summary="Crear despacho")
-def crear_despacho(payload: DespachoCreate, db: Session = Depends(get_db)) -> DespachoRead:
+def crear_despacho(payload: DespachoCreate, request: Request, db: Session = Depends(get_db)) -> DespachoRead:
     if crud_despacho.get_by_asignacion(db, payload.id_asignacion):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -92,6 +93,14 @@ def crear_despacho(payload: DespachoCreate, db: Session = Depends(get_db)) -> De
     _validar_fks(db, id_asignacion=payload.id_asignacion, id_flete=payload.id_flete)
     row = crud_despacho.create(db, payload)
     row = _sync_relations(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="despacho",
+        entity_id=row.id_despacho,
+        action="create",
+        after=model_to_dict(row),
+    )
     return DespachoRead.model_validate(row)
 
 
@@ -127,9 +136,10 @@ def obtener_despacho(id_despacho: int, db: Session = Depends(get_db)) -> Despach
 
 @router.patch("/{id_despacho}", response_model=DespachoRead, summary="Actualizar despacho")
 def actualizar_despacho(
-    id_despacho: int, payload: DespachoUpdate, db: Session = Depends(get_db)
+    id_despacho: int, payload: DespachoUpdate, request: Request, db: Session = Depends(get_db)
 ) -> DespachoRead:
     row = _despacho_or_404(db, id_despacho)
+    before = model_to_dict(row)
     dump = payload.model_dump(exclude_unset=True)
     _validar_fks(
         db,
@@ -138,6 +148,15 @@ def actualizar_despacho(
     )
     row = crud_despacho.update(db, row, payload)
     row = _sync_relations(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="despacho",
+        entity_id=id_despacho,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+    )
     return DespachoRead.model_validate(row)
 
 
@@ -149,6 +168,7 @@ def actualizar_despacho(
 def registrar_salida(
     id_despacho: int,
     payload: DespachoRegistrarSalida,
+    request: Request,
     db: Session = Depends(get_db),
     omitir_validacion_cumplimiento: bool = Query(
         False,
@@ -158,6 +178,7 @@ def registrar_salida(
         ),
     ),
 ) -> DespachoRead:
+    before = model_to_dict(_despacho_or_404(db, id_despacho))
     if not omitir_validacion_cumplimiento:
         try:
             validacion = validar_salida_por_despacho(db, id_despacho=id_despacho)
@@ -184,7 +205,17 @@ def registrar_salida(
             descripcion=payload.observaciones_salida or "Salida registrada.",
         ),
     )
-    return DespachoRead.model_validate(_despacho_or_404(db, id_despacho))
+    refreshed = _despacho_or_404(db, id_despacho)
+    write_audit_log(
+        db,
+        request,
+        entity="despacho",
+        entity_id=id_despacho,
+        action="registrar_salida",
+        before=before,
+        after=model_to_dict(refreshed),
+    )
+    return DespachoRead.model_validate(refreshed)
 
 
 @router.get(
@@ -233,8 +264,9 @@ def crear_evento_despacho(
     summary="Registrar entrega de despacho",
 )
 def registrar_entrega(
-    id_despacho: int, payload: DespachoRegistrarEntrega, db: Session = Depends(get_db)
+    id_despacho: int, payload: DespachoRegistrarEntrega, request: Request, db: Session = Depends(get_db)
 ) -> DespachoRead:
+    before = model_to_dict(_despacho_or_404(db, id_despacho))
     row = crud_despacho.registrar_entrega(db, _despacho_or_404(db, id_despacho), payload)
     row = _sync_relations(db, row)
     crud_despacho.create_evento(
@@ -246,7 +278,17 @@ def registrar_entrega(
             descripcion=payload.observaciones_entrega or "Entrega registrada.",
         ),
     )
-    return DespachoRead.model_validate(_despacho_or_404(db, id_despacho))
+    refreshed = _despacho_or_404(db, id_despacho)
+    write_audit_log(
+        db,
+        request,
+        entity="despacho",
+        entity_id=id_despacho,
+        action="registrar_entrega",
+        before=before,
+        after=model_to_dict(refreshed),
+    )
+    return DespachoRead.model_validate(refreshed)
 
 
 @router.post(
@@ -255,8 +297,9 @@ def registrar_entrega(
     summary="Cerrar despacho",
 )
 def cerrar_despacho(
-    id_despacho: int, payload: DespachoCerrar, db: Session = Depends(get_db)
+    id_despacho: int, payload: DespachoCerrar, request: Request, db: Session = Depends(get_db)
 ) -> DespachoRead:
+    before = model_to_dict(_despacho_or_404(db, id_despacho))
     row = crud_despacho.cerrar(db, _despacho_or_404(db, id_despacho), payload)
     row = _sync_relations(db, row)
     crud_despacho.create_evento(
@@ -268,7 +311,17 @@ def cerrar_despacho(
             descripcion=payload.observaciones_cierre or "Despacho cerrado.",
         ),
     )
-    return DespachoRead.model_validate(_despacho_or_404(db, id_despacho))
+    refreshed = _despacho_or_404(db, id_despacho)
+    write_audit_log(
+        db,
+        request,
+        entity="despacho",
+        entity_id=id_despacho,
+        action="cerrar",
+        before=before,
+        after=model_to_dict(refreshed),
+    )
+    return DespachoRead.model_validate(refreshed)
 
 
 @router.post(
@@ -277,8 +330,9 @@ def cerrar_despacho(
     summary="Cancelar despacho",
 )
 def cancelar_despacho(
-    id_despacho: int, payload: DespachoCancelar, db: Session = Depends(get_db)
+    id_despacho: int, payload: DespachoCancelar, request: Request, db: Session = Depends(get_db)
 ) -> DespachoRead:
+    before = model_to_dict(_despacho_or_404(db, id_despacho))
     row = crud_despacho.cancelar(
         db,
         _despacho_or_404(db, id_despacho),
@@ -294,9 +348,30 @@ def cancelar_despacho(
             descripcion=payload.motivo_cancelacion,
         ),
     )
-    return DespachoRead.model_validate(_despacho_or_404(db, id_despacho))
+    refreshed = _despacho_or_404(db, id_despacho)
+    write_audit_log(
+        db,
+        request,
+        entity="despacho",
+        entity_id=id_despacho,
+        action="cancelar",
+        before=before,
+        after=model_to_dict(refreshed),
+        meta={"motivo_cancelacion": payload.motivo_cancelacion},
+    )
+    return DespachoRead.model_validate(refreshed)
 
 
 @router.delete("/{id_despacho}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar despacho")
-def eliminar_despacho(id_despacho: int, db: Session = Depends(get_db)) -> None:
-    crud_despacho.delete(db, _despacho_or_404(db, id_despacho))
+def eliminar_despacho(id_despacho: int, request: Request, db: Session = Depends(get_db)) -> None:
+    row = _despacho_or_404(db, id_despacho)
+    before = model_to_dict(row)
+    crud_despacho.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="despacho",
+        entity_id=id_despacho,
+        action="delete",
+        before=before,
+    )
