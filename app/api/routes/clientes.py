@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.services.audit import model_to_dict, write_audit_log
 from app.crud import cliente as crud_cliente
 from app.schemas.cliente import (
     ClienteCondicionComercialRead,
@@ -57,8 +58,19 @@ def _tarifa_especial_or_404(db: Session, cliente_id: int, tarifa_especial_id: in
 
 
 @router.post("", response_model=ClienteRead, status_code=status.HTTP_201_CREATED, summary="Crear cliente")
-def crear_cliente(payload: ClienteCreate, db: Session = Depends(get_db)) -> ClienteRead:
-    return crud_cliente.create(db, payload)
+def crear_cliente(
+    payload: ClienteCreate, request: Request, db: Session = Depends(get_db)
+) -> ClienteRead:
+    row = crud_cliente.create(db, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
+    return ClienteRead.model_validate(row)
 
 
 @router.get("", response_model=ClienteListResponse, summary="Listar clientes")
@@ -87,10 +99,22 @@ def listar_clientes(
     summary="Crear contacto de cliente",
 )
 def crear_contacto_cliente(
-    cliente_id: int, payload: ClienteContactoCreate, db: Session = Depends(get_db)
+    cliente_id: int,
+    payload: ClienteContactoCreate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> ClienteContactoRead:
     _cliente_or_404(db, cliente_id)
     row = crud_cliente.create_contacto(db, cliente_id, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente_contacto",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"cliente_id": cliente_id},
+    )
     return ClienteContactoRead.model_validate(row)
 
 
@@ -117,12 +141,24 @@ def actualizar_contacto_cliente(
     cliente_id: int,
     contacto_id: int,
     payload: ClienteContactoUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> ClienteContactoRead:
     row = _contacto_or_404(db, cliente_id, contacto_id)
     if payload.cliente_id is not None:
         _cliente_or_404(db, payload.cliente_id)
+    before = model_to_dict(row)
     row = crud_cliente.update_contacto(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente_contacto",
+        entity_id=contacto_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+        meta={"cliente_id": cliente_id},
+    )
     return ClienteContactoRead.model_validate(row)
 
 
@@ -131,9 +167,21 @@ def actualizar_contacto_cliente(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar contacto de cliente",
 )
-def eliminar_contacto_cliente(cliente_id: int, contacto_id: int, db: Session = Depends(get_db)) -> None:
+def eliminar_contacto_cliente(
+    cliente_id: int, contacto_id: int, request: Request, db: Session = Depends(get_db)
+) -> None:
     row = _contacto_or_404(db, cliente_id, contacto_id)
+    before = model_to_dict(row)
     crud_cliente.delete_contacto(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente_contacto",
+        entity_id=contacto_id,
+        action="delete",
+        before=before,
+        meta={"cliente_id": cliente_id},
+    )
 
 
 @router.post(
@@ -143,10 +191,22 @@ def eliminar_contacto_cliente(cliente_id: int, contacto_id: int, db: Session = D
     summary="Crear domicilio de cliente",
 )
 def crear_domicilio_cliente(
-    cliente_id: int, payload: ClienteDomicilioCreate, db: Session = Depends(get_db)
+    cliente_id: int,
+    payload: ClienteDomicilioCreate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> ClienteDomicilioRead:
     _cliente_or_404(db, cliente_id)
     row = crud_cliente.create_domicilio(db, cliente_id, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente_domicilio",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"cliente_id": cliente_id},
+    )
     return ClienteDomicilioRead.model_validate(row)
 
 
@@ -173,10 +233,22 @@ def actualizar_domicilio_cliente(
     cliente_id: int,
     domicilio_id: int,
     payload: ClienteDomicilioUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> ClienteDomicilioRead:
     row = _domicilio_or_404(db, cliente_id, domicilio_id)
+    before = model_to_dict(row)
     row = crud_cliente.update_domicilio(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente_domicilio",
+        entity_id=domicilio_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+        meta={"cliente_id": cliente_id},
+    )
     return ClienteDomicilioRead.model_validate(row)
 
 
@@ -185,9 +257,21 @@ def actualizar_domicilio_cliente(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar domicilio de cliente",
 )
-def eliminar_domicilio_cliente(cliente_id: int, domicilio_id: int, db: Session = Depends(get_db)) -> None:
+def eliminar_domicilio_cliente(
+    cliente_id: int, domicilio_id: int, request: Request, db: Session = Depends(get_db)
+) -> None:
     row = _domicilio_or_404(db, cliente_id, domicilio_id)
+    before = model_to_dict(row)
     crud_cliente.delete_domicilio(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente_domicilio",
+        entity_id=domicilio_id,
+        action="delete",
+        before=before,
+        meta={"cliente_id": cliente_id},
+    )
 
 
 @router.get(
@@ -216,10 +300,22 @@ def obtener_condiciones_comerciales_cliente(
 def upsert_condiciones_comerciales_cliente(
     cliente_id: int,
     payload: ClienteCondicionComercialUpsert,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> ClienteCondicionComercialRead:
     _cliente_or_404(db, cliente_id)
+    prev = crud_cliente.get_condicion_comercial(db, cliente_id)
+    before = model_to_dict(prev) if prev else None
     row = crud_cliente.upsert_condicion_comercial(db, cliente_id, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente_condicion_comercial",
+        entity_id=cliente_id,
+        action="upsert",
+        before=before,
+        after=model_to_dict(row),
+    )
     return ClienteCondicionComercialRead.model_validate(row)
 
 
@@ -248,12 +344,22 @@ def listar_tarifas_especiales_cliente(
 def crear_tarifa_especial_cliente(
     cliente_id: int,
     payload: ClienteTarifaEspecialCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> ClienteTarifaEspecialRead:
     _cliente_or_404(db, cliente_id)
     if not crud_cliente.tarifa_flete_exists(db, payload.tarifa_flete_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tarifa base no encontrada.")
     row = crud_cliente.create_tarifa_especial(db, cliente_id, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente_tarifa_especial",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"cliente_id": cliente_id},
+    )
     return ClienteTarifaEspecialRead.model_validate(row)
 
 
@@ -281,6 +387,7 @@ def actualizar_tarifa_especial_cliente(
     cliente_id: int,
     tarifa_especial_id: int,
     payload: ClienteTarifaEspecialUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> ClienteTarifaEspecialRead:
     row = _tarifa_especial_or_404(db, cliente_id, tarifa_especial_id)
@@ -288,7 +395,18 @@ def actualizar_tarifa_especial_cliente(
         db, payload.tarifa_flete_id
     ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tarifa base no encontrada.")
+    before = model_to_dict(row)
     row = crud_cliente.update_tarifa_especial(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente_tarifa_especial",
+        entity_id=tarifa_especial_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+        meta={"cliente_id": cliente_id},
+    )
     return ClienteTarifaEspecialRead.model_validate(row)
 
 
@@ -298,10 +416,23 @@ def actualizar_tarifa_especial_cliente(
     summary="Eliminar tarifa especial de cliente",
 )
 def eliminar_tarifa_especial_cliente(
-    cliente_id: int, tarifa_especial_id: int, db: Session = Depends(get_db)
+    cliente_id: int,
+    tarifa_especial_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> None:
     row = _tarifa_especial_or_404(db, cliente_id, tarifa_especial_id)
+    before = model_to_dict(row)
     crud_cliente.delete_tarifa_especial(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente_tarifa_especial",
+        entity_id=tarifa_especial_id,
+        action="delete",
+        before=before,
+        meta={"cliente_id": cliente_id},
+    )
 
 
 # GET/PATCH/DELETE /{cliente_id} al final para no sombrear rutas /{cliente_id}/...
@@ -312,15 +443,30 @@ def obtener_cliente(cliente_id: int, db: Session = Depends(get_db)) -> ClienteRe
 
 @router.patch("/{cliente_id}", response_model=ClienteRead, summary="Actualizar cliente")
 def actualizar_cliente(
-    cliente_id: int, payload: ClienteUpdate, db: Session = Depends(get_db)
+    cliente_id: int,
+    payload: ClienteUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> ClienteRead:
     row = _cliente_or_404(db, cliente_id)
-    return crud_cliente.update(db, row, payload)
+    before = model_to_dict(row)
+    updated = crud_cliente.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="cliente",
+        entity_id=cliente_id,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+    )
+    return ClienteRead.model_validate(updated)
 
 
 @router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar cliente")
-def eliminar_cliente(cliente_id: int, db: Session = Depends(get_db)) -> None:
+def eliminar_cliente(cliente_id: int, request: Request, db: Session = Depends(get_db)) -> None:
     row = _cliente_or_404(db, cliente_id)
+    before = model_to_dict(row)
     try:
         crud_cliente.delete(db, row)
     except IntegrityError:
@@ -329,3 +475,11 @@ def eliminar_cliente(cliente_id: int, db: Session = Depends(get_db)) -> None:
             status.HTTP_409_CONFLICT,
             detail="No se puede eliminar el cliente: existen fletes u otros registros vinculados.",
         ) from None
+    write_audit_log(
+        db,
+        request,
+        entity="cliente",
+        entity_id=cliente_id,
+        action="delete",
+        before=before,
+    )

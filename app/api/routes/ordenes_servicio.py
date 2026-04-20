@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.services.audit import model_to_dict, write_audit_log
 from app.crud import cliente as crud_cliente
 from app.crud import cotizacion_flete as crud_cotizacion_flete
 from app.crud import despacho as crud_despacho
@@ -57,7 +58,7 @@ def _validar_fks(
     summary="Crear orden de servicio",
 )
 def crear_orden_servicio(
-    payload: OrdenServicioCreate, db: Session = Depends(get_db)
+    payload: OrdenServicioCreate, request: Request, db: Session = Depends(get_db)
 ) -> OrdenServicioRead:
     _validar_fks(
         db,
@@ -75,6 +76,14 @@ def crear_orden_servicio(
             "estatus": EstatusOrdenServicio.BORRADOR,
         },
     )
+    write_audit_log(
+        db,
+        request,
+        entity="orden_servicio",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
     return OrdenServicioRead.model_validate(row)
 
 
@@ -85,7 +94,9 @@ def crear_orden_servicio(
     summary="Crear orden de servicio desde cotizacion",
 )
 def crear_orden_desde_cotizacion(
-    payload: OrdenServicioDesdeCotizacionCreate, db: Session = Depends(get_db)
+    payload: OrdenServicioDesdeCotizacionCreate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> OrdenServicioRead:
     cotizacion = crud_cotizacion_flete.get_by_id(db, payload.cotizacion_id)
     if not cotizacion:
@@ -125,6 +136,15 @@ def crear_orden_desde_cotizacion(
             "observaciones": payload.observaciones,
         },
     )
+    write_audit_log(
+        db,
+        request,
+        entity="orden_servicio",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"origen": "desde_cotizacion", "cotizacion_id": cotizacion.id},
+    )
     return OrdenServicioRead.model_validate(row)
 
 
@@ -154,9 +174,13 @@ def obtener_orden_servicio(orden_id: int, db: Session = Depends(get_db)) -> Orde
 
 @router.patch("/{orden_id}", response_model=OrdenServicioRead, summary="Actualizar orden de servicio")
 def actualizar_orden_servicio(
-    orden_id: int, payload: OrdenServicioUpdate, db: Session = Depends(get_db)
+    orden_id: int,
+    payload: OrdenServicioUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> OrdenServicioRead:
     row = _orden_or_404(db, orden_id)
+    before = model_to_dict(row)
     dump = payload.model_dump(exclude_unset=True)
     _validar_fks(
         db,
@@ -167,6 +191,15 @@ def actualizar_orden_servicio(
         despacho_id=dump.get("despacho_id", row.despacho_id),
     )
     row = crud_orden_servicio.update(db, row, dump)
+    write_audit_log(
+        db,
+        request,
+        entity="orden_servicio",
+        entity_id=orden_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+    )
     return OrdenServicioRead.model_validate(row)
 
 
@@ -178,13 +211,26 @@ def actualizar_orden_servicio(
 def cambiar_estatus_orden_servicio(
     orden_id: int,
     payload: OrdenServicioCambiarEstatus,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> OrdenServicioRead:
+    current = _orden_or_404(db, orden_id)
+    before = model_to_dict(current)
     row = crud_orden_servicio.change_status(
         db,
-        _orden_or_404(db, orden_id),
+        current,
         payload.estatus,
         payload.observaciones,
+    )
+    write_audit_log(
+        db,
+        request,
+        entity="orden_servicio",
+        entity_id=orden_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+        meta={"campo": "estatus"},
     )
     return OrdenServicioRead.model_validate(row)
 
@@ -194,5 +240,17 @@ def cambiar_estatus_orden_servicio(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar orden de servicio",
 )
-def eliminar_orden_servicio(orden_id: int, db: Session = Depends(get_db)) -> None:
-    crud_orden_servicio.delete(db, _orden_or_404(db, orden_id))
+def eliminar_orden_servicio(
+    orden_id: int, request: Request, db: Session = Depends(get_db)
+) -> None:
+    row = _orden_or_404(db, orden_id)
+    before = model_to_dict(row)
+    crud_orden_servicio.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="orden_servicio",
+        entity_id=orden_id,
+        action="delete",
+        before=before,
+    )

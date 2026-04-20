@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.services.audit import model_to_dict, write_audit_log
 from app.crud import transportista as crud_transportista
 from app.schemas.transportista import (
     TransportistaContactoCreate,
@@ -45,9 +46,18 @@ def _documento_or_404(db: Session, transportista_id: int, documento_id: int):
 
 @router.post("", response_model=TransportistaRead, status_code=status.HTTP_201_CREATED, summary="Crear transportista")
 def crear_transportista(
-    payload: TransportistaCreate, db: Session = Depends(get_db)
+    payload: TransportistaCreate, request: Request, db: Session = Depends(get_db)
 ) -> TransportistaRead:
-    return crud_transportista.create(db, payload)
+    row = crud_transportista.create(db, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="transportista",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
+    return TransportistaRead.model_validate(row)
 
 
 @router.get("", response_model=TransportistaListResponse, summary="Listar transportistas")
@@ -78,17 +88,34 @@ def obtener_transportista(
 
 @router.patch("/{transportista_id}", response_model=TransportistaRead, summary="Actualizar transportista")
 def actualizar_transportista(
-    transportista_id: int, payload: TransportistaUpdate, db: Session = Depends(get_db)
+    transportista_id: int,
+    payload: TransportistaUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> TransportistaRead:
     row = _transportista_or_404(db, transportista_id)
-    return crud_transportista.update(db, row, payload)
+    before = model_to_dict(row)
+    updated = crud_transportista.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="transportista",
+        entity_id=transportista_id,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+    )
+    return TransportistaRead.model_validate(updated)
 
 
 @router.delete(
     "/{transportista_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Eliminar transportista"
 )
-def eliminar_transportista(transportista_id: int, db: Session = Depends(get_db)) -> None:
+def eliminar_transportista(
+    transportista_id: int, request: Request, db: Session = Depends(get_db)
+) -> None:
     row = _transportista_or_404(db, transportista_id)
+    before = model_to_dict(row)
     try:
         crud_transportista.delete(db, row)
     except IntegrityError:
@@ -97,6 +124,14 @@ def eliminar_transportista(transportista_id: int, db: Session = Depends(get_db))
             status.HTTP_409_CONFLICT,
             detail="No se puede eliminar el transportista: existen fletes u otros registros vinculados.",
         ) from None
+    write_audit_log(
+        db,
+        request,
+        entity="transportista",
+        entity_id=transportista_id,
+        action="delete",
+        before=before,
+    )
 
 
 @router.post(
@@ -108,10 +143,20 @@ def eliminar_transportista(transportista_id: int, db: Session = Depends(get_db))
 def crear_contacto_transportista(
     transportista_id: int,
     payload: TransportistaContactoCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TransportistaContactoRead:
     _transportista_or_404(db, transportista_id)
     row = crud_transportista.create_contacto(db, transportista_id, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="transportista_contacto",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"transportista_id": transportista_id},
+    )
     return TransportistaContactoRead.model_validate(row)
 
 
@@ -140,10 +185,22 @@ def actualizar_contacto_transportista(
     transportista_id: int,
     contacto_id: int,
     payload: TransportistaContactoUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TransportistaContactoRead:
     row = _contacto_or_404(db, transportista_id, contacto_id)
+    before = model_to_dict(row)
     row = crud_transportista.update_contacto(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="transportista_contacto",
+        entity_id=contacto_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+        meta={"transportista_id": transportista_id},
+    )
     return TransportistaContactoRead.model_validate(row)
 
 
@@ -153,10 +210,23 @@ def actualizar_contacto_transportista(
     summary="Eliminar contacto de transportista",
 )
 def eliminar_contacto_transportista(
-    transportista_id: int, contacto_id: int, db: Session = Depends(get_db)
+    transportista_id: int,
+    contacto_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> None:
     row = _contacto_or_404(db, transportista_id, contacto_id)
+    before = model_to_dict(row)
     crud_transportista.delete_contacto(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="transportista_contacto",
+        entity_id=contacto_id,
+        action="delete",
+        before=before,
+        meta={"transportista_id": transportista_id},
+    )
 
 
 @router.post(
@@ -168,10 +238,20 @@ def eliminar_contacto_transportista(
 def crear_documento_transportista(
     transportista_id: int,
     payload: TransportistaDocumentoCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TransportistaDocumentoRead:
     _transportista_or_404(db, transportista_id)
     row = crud_transportista.create_documento(db, transportista_id, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="transportista_documento",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+        meta={"transportista_id": transportista_id},
+    )
     return TransportistaDocumentoRead.model_validate(row)
 
 
@@ -200,10 +280,22 @@ def actualizar_documento_transportista(
     transportista_id: int,
     documento_id: int,
     payload: TransportistaDocumentoUpdate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TransportistaDocumentoRead:
     row = _documento_or_404(db, transportista_id, documento_id)
+    before = model_to_dict(row)
     row = crud_transportista.update_documento(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="transportista_documento",
+        entity_id=documento_id,
+        action="update",
+        before=before,
+        after=model_to_dict(row),
+        meta={"transportista_id": transportista_id},
+    )
     return TransportistaDocumentoRead.model_validate(row)
 
 
@@ -213,7 +305,20 @@ def actualizar_documento_transportista(
     summary="Eliminar documento de transportista",
 )
 def eliminar_documento_transportista(
-    transportista_id: int, documento_id: int, db: Session = Depends(get_db)
+    transportista_id: int,
+    documento_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> None:
     row = _documento_or_404(db, transportista_id, documento_id)
+    before = model_to_dict(row)
     crud_transportista.delete_documento(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="transportista_documento",
+        entity_id=documento_id,
+        action="delete",
+        before=before,
+        meta={"transportista_id": transportista_id},
+    )

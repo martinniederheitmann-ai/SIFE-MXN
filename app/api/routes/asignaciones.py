@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.services.audit import model_to_dict, write_audit_log
 from app.crud import asignacion as crud_asignacion
 from app.crud import operador as crud_operador
 from app.crud import unidad as crud_unidad
@@ -38,14 +39,25 @@ def _validar_fks(db: Session, *, id_operador: int, id_unidad: int, id_viaje: int
     status_code=status.HTTP_201_CREATED,
     summary="Crear asignacion",
 )
-def crear_asignacion(payload: AsignacionCreate, db: Session = Depends(get_db)) -> AsignacionRead:
+def crear_asignacion(
+    payload: AsignacionCreate, request: Request, db: Session = Depends(get_db)
+) -> AsignacionRead:
     _validar_fks(
         db,
         id_operador=payload.id_operador,
         id_unidad=payload.id_unidad,
         id_viaje=payload.id_viaje,
     )
-    return AsignacionRead.model_validate(crud_asignacion.create(db, payload))
+    row = crud_asignacion.create(db, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="asignacion",
+        entity_id=row.id,
+        action="create",
+        after=model_to_dict(row),
+    )
+    return AsignacionRead.model_validate(row)
 
 
 @router.get("", response_model=AsignacionListResponse, summary="Listar asignaciones")
@@ -84,9 +96,13 @@ def obtener_asignacion(id_asignacion: int, db: Session = Depends(get_db)) -> Asi
     summary="Actualizar asignacion",
 )
 def actualizar_asignacion(
-    id_asignacion: int, payload: AsignacionUpdate, db: Session = Depends(get_db)
+    id_asignacion: int,
+    payload: AsignacionUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
 ) -> AsignacionRead:
     row = _asignacion_or_404(db, id_asignacion)
+    before = model_to_dict(row)
     dump = payload.model_dump(exclude_unset=True)
     _validar_fks(
         db,
@@ -94,7 +110,17 @@ def actualizar_asignacion(
         id_unidad=dump.get("id_unidad", row.id_unidad),
         id_viaje=dump.get("id_viaje", row.id_viaje),
     )
-    return AsignacionRead.model_validate(crud_asignacion.update(db, row, payload))
+    updated = crud_asignacion.update(db, row, payload)
+    write_audit_log(
+        db,
+        request,
+        entity="asignacion",
+        entity_id=id_asignacion,
+        action="update",
+        before=before,
+        after=model_to_dict(updated),
+    )
+    return AsignacionRead.model_validate(updated)
 
 
 @router.delete(
@@ -102,5 +128,17 @@ def actualizar_asignacion(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Eliminar asignacion",
 )
-def eliminar_asignacion(id_asignacion: int, db: Session = Depends(get_db)) -> None:
-    crud_asignacion.delete(db, _asignacion_or_404(db, id_asignacion))
+def eliminar_asignacion(
+    id_asignacion: int, request: Request, db: Session = Depends(get_db)
+) -> None:
+    row = _asignacion_or_404(db, id_asignacion)
+    before = model_to_dict(row)
+    crud_asignacion.delete(db, row)
+    write_audit_log(
+        db,
+        request,
+        entity="asignacion",
+        entity_id=id_asignacion,
+        action="delete",
+        before=before,
+    )

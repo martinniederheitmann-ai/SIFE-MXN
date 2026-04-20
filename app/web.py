@@ -6026,7 +6026,8 @@ _UI_TEMPLATE = """<!doctype html>
 
     function applyCaptureShellStyle() {
       const isCaptureForm = (form) => {
-        const id = (form.id || "").trim().toLowerCase();
+        const raw = form.getAttribute("id");
+        const id = (raw == null ? "" : String(raw)).trim().toLowerCase();
         if (!id) {
           return false;
         }
