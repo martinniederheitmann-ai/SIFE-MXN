@@ -31,6 +31,7 @@ ALL_API_PREFIXES: frozenset[str] = frozenset(
         "unidades",
         "asignaciones",
         "despachos",
+        "direccion",
         "cumplimiento",
         "usuarios",
     }

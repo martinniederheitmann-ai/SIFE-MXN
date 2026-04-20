@@ -1090,6 +1090,15 @@ _UI_TEMPLATE = """<!doctype html>
         <button
           type="button"
           class="nav-button"
+          data-page="direccion"
+          data-restrict-roles="admin,direccion"
+        >
+          Dirección
+          <small>Tablero ejecutivo KPI</small>
+        </button>
+        <button
+          type="button"
+          class="nav-button"
           data-page="usuarios-admin"
           data-restrict-roles="admin,direccion"
         >
@@ -5579,6 +5588,84 @@ _UI_TEMPLATE = """<!doctype html>
           </article>
         </div>
       </section>
+
+      <section class="page" id="page-direccion">
+        <div class="grid">
+          <article class="card">
+            <h3>Tablero ejecutivo</h3>
+            <p class="hint">Indicadores diarios/semanales para dirección. Disponible para roles admin y direccion.</p>
+            <form id="direccion-filtros-form" class="two-col">
+              <label>Desde
+                <input id="direccion-desde" name="desde" type="date" required />
+              </label>
+              <label>Hasta
+                <input id="direccion-hasta" name="hasta" type="date" required />
+              </label>
+              <div class="span-2 toolbar-actions">
+                <button type="submit">Actualizar tablero</button>
+              </div>
+            </form>
+            <div id="direccion-message" class="message"></div>
+          </article>
+        </div>
+
+        <div class="status-grid" style="margin-top: 16px;">
+          <div class="stat"><strong id="dir-kpi-fletes">0</strong><div>Fletes</div></div>
+          <div class="stat"><strong id="dir-kpi-os">0</strong><div>Órdenes de servicio</div></div>
+          <div class="stat"><strong id="dir-kpi-asignaciones">0</strong><div>Asignaciones</div></div>
+          <div class="stat"><strong id="dir-kpi-despachos">0</strong><div>Despachos</div></div>
+          <div class="stat"><strong id="dir-kpi-cerrados">0</strong><div>Despachos cerrados</div></div>
+          <div class="stat"><strong id="dir-kpi-facturas">0</strong><div>Facturas</div></div>
+          <div class="stat"><strong id="dir-kpi-facturas-emitidas">0</strong><div>Facturas emitidas+</div></div>
+          <div class="stat"><strong id="dir-kpi-incidencias">0</strong><div>Incidencias despacho</div></div>
+        </div>
+
+        <div class="grid" style="margin-top: 16px;">
+          <article class="card">
+            <h3>Embudo operativo</h3>
+            <table>
+              <thead>
+                <tr><th>Conversión</th><th>Valor</th></tr>
+              </thead>
+              <tbody id="direccion-embudo-body">
+                <tr><td>Fletes -> OS</td><td>0%</td></tr>
+                <tr><td>OS -> Asignación</td><td>0%</td></tr>
+                <tr><td>Asignación -> Despacho</td><td>0%</td></tr>
+                <tr><td>Despacho -> Factura</td><td>0%</td></tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="card">
+            <h3>Tiempos de ciclo (horas)</h3>
+            <table>
+              <thead>
+                <tr><th>Tramo</th><th>Promedio</th></tr>
+              </thead>
+              <tbody id="direccion-tiempos-body">
+                <tr><td>Flete -> Factura</td><td>—</td></tr>
+                <tr><td>Orden -> Despacho</td><td>—</td></tr>
+                <tr><td>Despacho -> Factura</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </article>
+
+          <article class="card">
+            <h3>Semáforo ejecutivo</h3>
+            <table>
+              <thead>
+                <tr><th>Dimensión</th><th>Estado</th></tr>
+              </thead>
+              <tbody id="direccion-semaforo-body">
+                <tr><td>Operación</td><td>—</td></tr>
+                <tr><td>Sistema</td><td>—</td></tr>
+                <tr><td>Dato</td><td>—</td></tr>
+                <tr><td>Cobranza</td><td>—</td></tr>
+              </tbody>
+            </table>
+          </article>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -5669,6 +5756,7 @@ _UI_TEMPLATE = """<!doctype html>
       asignaciones: ["Asignaciones", "Alta, consulta y manual en pantalla con índice y visor."],
       despachos: ["Despachos", "Alta, consulta y manual en pantalla con índice y visor."],
       seguimiento: ["Seguimiento", "Salida, evento, entrega, cierre, cancelación y manual en pantalla con índice y visor."],
+      direccion: ["Dirección", "Tablero ejecutivo con KPI, embudo, tiempos y semáforo operativo."],
       "usuarios-admin": [
         "Usuarios",
         "Cambio de contraseña propio; altas y permisos por rol (admin y direccion).",
@@ -8063,6 +8151,9 @@ _UI_TEMPLATE = """<!doctype html>
       if (pageId === "inicio") {
         return true;
       }
+      if (pageId === "direccion" && !sessionStorage.getItem("sife_access_token")) {
+        return false;
+      }
       if (!pageMeta[pageId]) {
         return false;
       }
@@ -8102,6 +8193,9 @@ _UI_TEMPLATE = """<!doctype html>
           continue;
         }
         let ok = showAll || ROLE_PAGE_SET[role]?.has(p) || p === "inicio";
+        if (p === "direccion" && !hasJwt) {
+          ok = false;
+        }
         const restrict = (btn.getAttribute("data-restrict-roles") || "").trim();
         if (restrict && hasJwt) {
           const allowed = restrict.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -8152,6 +8246,117 @@ _UI_TEMPLATE = """<!doctype html>
       if (target === "usuarios-admin") {
         void refreshUsuariosAdminTable();
       }
+      if (target === "direccion") {
+        void refreshDireccionDashboard();
+      }
+    }
+
+    function semaforoLabel(raw) {
+      const v = String(raw || "").trim().toLowerCase();
+      if (v === "verde") return "🟢 Verde";
+      if (v === "amarillo") return "🟡 Amarillo";
+      if (v === "rojo") return "🔴 Rojo";
+      return "—";
+    }
+
+    function setDireccionNumber(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const n = Number(value || 0);
+      el.textContent = Number.isFinite(n) ? String(n) : "0";
+    }
+
+    function toISODateInput(d) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function renderDireccionDashboard(data) {
+      setDireccionNumber("dir-kpi-fletes", data?.resumen?.fletes);
+      setDireccionNumber("dir-kpi-os", data?.resumen?.ordenes_servicio);
+      setDireccionNumber("dir-kpi-asignaciones", data?.resumen?.asignaciones);
+      setDireccionNumber("dir-kpi-despachos", data?.resumen?.despachos);
+      setDireccionNumber("dir-kpi-cerrados", data?.resumen?.despachos_cerrados);
+      setDireccionNumber("dir-kpi-facturas", data?.resumen?.facturas);
+      setDireccionNumber("dir-kpi-facturas-emitidas", data?.resumen?.facturas_emitidas);
+      setDireccionNumber("dir-kpi-incidencias", data?.resumen?.incidencias_despacho);
+
+      const embudo = document.getElementById("direccion-embudo-body");
+      if (embudo) {
+        embudo.innerHTML = `
+          <tr><td>Fletes -> OS</td><td>${Number(data?.embudo?.fletes_a_os_pct || 0).toFixed(2)}%</td></tr>
+          <tr><td>OS -> Asignación</td><td>${Number(data?.embudo?.os_a_asignacion_pct || 0).toFixed(2)}%</td></tr>
+          <tr><td>Asignación -> Despacho</td><td>${Number(data?.embudo?.asignacion_a_despacho_pct || 0).toFixed(2)}%</td></tr>
+          <tr><td>Despacho -> Factura</td><td>${Number(data?.embudo?.despacho_a_factura_pct || 0).toFixed(2)}%</td></tr>
+        `;
+      }
+
+      const tiempos = document.getElementById("direccion-tiempos-body");
+      const fmtHours = (v) => (v === null || v === undefined ? "—" : `${Number(v).toFixed(2)} h`);
+      if (tiempos) {
+        tiempos.innerHTML = `
+          <tr><td>Flete -> Factura</td><td>${fmtHours(data?.tiempos?.flete_a_factura_horas)}</td></tr>
+          <tr><td>Orden -> Despacho</td><td>${fmtHours(data?.tiempos?.orden_a_despacho_horas)}</td></tr>
+          <tr><td>Despacho -> Factura</td><td>${fmtHours(data?.tiempos?.despacho_a_factura_horas)}</td></tr>
+        `;
+      }
+
+      const semaforo = document.getElementById("direccion-semaforo-body");
+      if (semaforo) {
+        semaforo.innerHTML = `
+          <tr><td>Operación</td><td>${semaforoLabel(data?.semaforo?.operacion)}</td></tr>
+          <tr><td>Sistema</td><td>${semaforoLabel(data?.semaforo?.sistema)}</td></tr>
+          <tr><td>Dato</td><td>${semaforoLabel(data?.semaforo?.dato)}</td></tr>
+          <tr><td>Cobranza</td><td>${semaforoLabel(data?.semaforo?.cobranza)}</td></tr>
+        `;
+      }
+    }
+
+    async function refreshDireccionDashboard() {
+      const fromInput = document.getElementById("direccion-desde");
+      const toInput = document.getElementById("direccion-hasta");
+      if (!fromInput || !toInput) {
+        return;
+      }
+      const q = new URLSearchParams({
+        desde: fromInput.value,
+        hasta: toInput.value,
+      });
+      clearMessage("direccion-message");
+      try {
+        const data = await api(`/direccion/dashboard?${q.toString()}`);
+        renderDireccionDashboard(data);
+        setMessage("direccion-message", `Rango consultado: ${data.desde} a ${data.hasta}.`, "ok");
+      } catch (error) {
+        setMessage("direccion-message", error?.message || "No se pudo cargar tablero de dirección.", "error");
+      }
+    }
+
+    function initDireccionModule() {
+      const form = document.getElementById("direccion-filtros-form");
+      const fromInput = document.getElementById("direccion-desde");
+      const toInput = document.getElementById("direccion-hasta");
+      if (!form || !fromInput || !toInput) {
+        return;
+      }
+      if (!toInput.value) {
+        toInput.value = toISODateInput(new Date());
+      }
+      if (!fromInput.value) {
+        const d = new Date();
+        d.setDate(d.getDate() - 6);
+        fromInput.value = toISODateInput(d);
+      }
+      if (form.dataset.bound === "true") {
+        return;
+      }
+      form.dataset.bound = "true";
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        void refreshDireccionDashboard();
+      });
     }
 
     function initNavigation() {
@@ -13029,6 +13234,7 @@ _UI_TEMPLATE = """<!doctype html>
       await runInitStep("initUsuariosAdminModule", () => initUsuariosAdminModule());
       await runInitStep("initEditors", () => initEditors());
       await runInitStep("initFleteCotizador", () => initFleteCotizador());
+      await runInitStep("initDireccionModule", () => initDireccionModule());
       await runInitStep("wireEnterAvanzaCampo(#flete-form)", () => wireEnterAvanzaCampo("#flete-form"));
       await runInitStep("wireEnterAvanzaCampo(#flete-edit-form)", () => wireEnterAvanzaCampo("#flete-edit-form"));
       await runInitStep("refreshData + fetchHealthIntoPanel", () => Promise.all([refreshData(), fetchHealthIntoPanel()]));
