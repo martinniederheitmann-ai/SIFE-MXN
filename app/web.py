@@ -5665,6 +5665,93 @@ _UI_TEMPLATE = """<!doctype html>
             </table>
           </article>
         </div>
+
+        <div class="grid" style="margin-top: 16px;">
+          <article class="card">
+            <h3>Incidencias operativas</h3>
+            <form id="direccion-incidencia-form" class="grid">
+              <div class="two-col">
+                <label>Título
+                  <input name="titulo" required maxlength="160" />
+                </label>
+                <label>Módulo
+                  <input name="modulo" value="general" required maxlength="64" />
+                </label>
+                <label>Severidad
+                  <select name="severidad">
+                    <option value="baja">baja</option>
+                    <option value="media" selected>media</option>
+                    <option value="alta">alta</option>
+                    <option value="critica">critica</option>
+                  </select>
+                </label>
+                <label>Fecha detectada
+                  <input name="fecha_detectada" type="date" required />
+                </label>
+                <label>Responsable
+                  <input name="responsable" maxlength="120" />
+                </label>
+                <label>Estatus
+                  <select name="estatus">
+                    <option value="abierta" selected>abierta</option>
+                    <option value="en_progreso">en_progreso</option>
+                    <option value="resuelta">resuelta</option>
+                  </select>
+                </label>
+              </div>
+              <label>Detalle
+                <textarea name="detalle"></textarea>
+              </label>
+              <div class="toolbar-actions">
+                <button type="submit">Registrar incidencia</button>
+              </div>
+            </form>
+            <div id="direccion-incidencia-message" class="message"></div>
+            <div id="direccion-incidencias-lista" style="overflow:auto; margin-top:12px;"></div>
+          </article>
+
+          <article class="card">
+            <h3>Plan de acción semanal</h3>
+            <form id="direccion-accion-form" class="grid">
+              <div class="two-col">
+                <label>Semana inicio
+                  <input name="week_start" type="date" required />
+                </label>
+                <label>Semana fin
+                  <input name="week_end" type="date" required />
+                </label>
+                <label>Título
+                  <input name="titulo" required maxlength="180" />
+                </label>
+                <label>Responsable
+                  <input name="owner" required maxlength="120" />
+                </label>
+                <label>Fecha compromiso
+                  <input name="due_date" type="date" />
+                </label>
+                <label>Estatus
+                  <select name="estatus">
+                    <option value="pendiente" selected>pendiente</option>
+                    <option value="en_curso">en_curso</option>
+                    <option value="completada">completada</option>
+                    <option value="cancelada">cancelada</option>
+                  </select>
+                </label>
+              </div>
+              <label>Impacto esperado
+                <input name="impacto" maxlength="255" />
+              </label>
+              <label>Descripción
+                <textarea name="descripcion"></textarea>
+              </label>
+              <div class="toolbar-actions">
+                <button type="submit">Guardar acción</button>
+              </div>
+            </form>
+            <div id="direccion-accion-message" class="message"></div>
+            <div id="direccion-acciones-lista" style="overflow:auto; margin-top:12px;"></div>
+          </article>
+        </div>
       </section>
     </main>
   </div>
@@ -8273,6 +8360,20 @@ _UI_TEMPLATE = """<!doctype html>
       return `${year}-${month}-${day}`;
     }
 
+    function ensureDireccionDateRange(fromInput, toInput, messageId) {
+      const from = (fromInput?.value || "").trim();
+      const to = (toInput?.value || "").trim();
+      if (!from || !to) {
+        setMessage(messageId, "Capture ambas fechas: Desde y Hasta.", "error");
+        return null;
+      }
+      if (from > to) {
+        setMessage(messageId, "La fecha Desde no puede ser mayor que Hasta.", "error");
+        return null;
+      }
+      return { from, to };
+    }
+
     function renderDireccionDashboard(data) {
       setDireccionNumber("dir-kpi-fletes", data?.resumen?.fletes);
       setDireccionNumber("dir-kpi-os", data?.resumen?.ordenes_servicio);
@@ -8320,18 +8421,133 @@ _UI_TEMPLATE = """<!doctype html>
       if (!fromInput || !toInput) {
         return;
       }
+      const range = ensureDireccionDateRange(fromInput, toInput, "direccion-message");
+      if (!range) {
+        return;
+      }
       const q = new URLSearchParams({
-        desde: fromInput.value,
-        hasta: toInput.value,
+        desde: range.from,
+        hasta: range.to,
       });
       clearMessage("direccion-message");
       try {
         const data = await api(`/direccion/dashboard?${q.toString()}`);
         renderDireccionDashboard(data);
+        await Promise.all([refreshDireccionIncidencias(), refreshDireccionAcciones()]);
         setMessage("direccion-message", `Rango consultado: ${data.desde} a ${data.hasta}.`, "ok");
       } catch (error) {
         setMessage("direccion-message", error?.message || "No se pudo cargar tablero de dirección.", "error");
       }
+    }
+
+    function renderDireccionIncidencias(items) {
+      const box = document.getElementById("direccion-incidencias-lista");
+      if (!box) return;
+      if (!items || items.length === 0) {
+        box.innerHTML = '<div class="hint">Sin incidencias en el rango seleccionado.</div>';
+        return;
+      }
+      const rows = items
+        .map(
+          (it) => `
+            <tr data-incidencia-id="${it.id}">
+              <td>${it.id}</td>
+              <td>${escapeHtml(it.fecha_detectada || "")}</td>
+              <td>${escapeHtml(it.modulo || "")}</td>
+              <td>${escapeHtml(it.titulo || "")}</td>
+              <td>
+                <select data-incidencia-severidad>
+                  ${["baja", "media", "alta", "critica"]
+                    .map((x) => `<option value="${x}" ${x === it.severidad ? "selected" : ""}>${x}</option>`)
+                    .join("")}
+                </select>
+              </td>
+              <td>
+                <select data-incidencia-estatus>
+                  ${["abierta", "en_progreso", "resuelta"]
+                    .map((x) => `<option value="${x}" ${x === it.estatus ? "selected" : ""}>${x}</option>`)
+                    .join("")}
+                </select>
+              </td>
+              <td><input data-incidencia-responsable value="${escapeHtml(it.responsable || "")}" /></td>
+              <td><button type="button" class="secondary-button" data-incidencia-save>Guardar</button></td>
+            </tr>
+          `
+        )
+        .join("");
+      box.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Fecha</th><th>Módulo</th><th>Título</th><th>Severidad</th><th>Estatus</th><th>Responsable</th><th></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    async function refreshDireccionIncidencias() {
+      const fromInput = document.getElementById("direccion-desde");
+      const toInput = document.getElementById("direccion-hasta");
+      if (!fromInput || !toInput) return;
+      const range = ensureDireccionDateRange(fromInput, toInput, "direccion-incidencia-message");
+      if (!range) return;
+      const q = new URLSearchParams({ desde: range.from, hasta: range.to });
+      const rows = await api(`/direccion/incidencias?${q.toString()}`);
+      renderDireccionIncidencias(rows);
+    }
+
+    function renderDireccionAcciones(items) {
+      const box = document.getElementById("direccion-acciones-lista");
+      if (!box) return;
+      if (!items || items.length === 0) {
+        box.innerHTML = '<div class="hint">Sin acciones para el rango semanal seleccionado.</div>';
+        return;
+      }
+      const rows = items
+        .map(
+          (it) => `
+            <tr data-accion-id="${it.id}">
+              <td>${it.id}</td>
+              <td>${escapeHtml(it.week_start || "")}</td>
+              <td>${escapeHtml(it.week_end || "")}</td>
+              <td>${escapeHtml(it.titulo || "")}</td>
+              <td><input data-accion-owner value="${escapeHtml(it.owner || "")}" /></td>
+              <td>
+                <select data-accion-estatus>
+                  ${["pendiente", "en_curso", "completada", "cancelada"]
+                    .map((x) => `<option value="${x}" ${x === it.estatus ? "selected" : ""}>${x}</option>`)
+                    .join("")}
+                </select>
+              </td>
+              <td>${escapeHtml(it.impacto || "")}</td>
+              <td><button type="button" class="secondary-button" data-accion-save>Guardar</button></td>
+            </tr>
+          `
+        )
+        .join("");
+      box.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Semana inicio</th><th>Semana fin</th><th>Título</th><th>Responsable</th><th>Estatus</th><th>Impacto</th><th></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    async function refreshDireccionAcciones() {
+      const fromInput = document.getElementById("direccion-desde");
+      const toInput = document.getElementById("direccion-hasta");
+      if (!fromInput || !toInput) return;
+      const range = ensureDireccionDateRange(fromInput, toInput, "direccion-accion-message");
+      if (!range) return;
+      const q = new URLSearchParams({ week_start: range.from, week_end: range.to });
+      const rows = await api(`/direccion/acciones?${q.toString()}`);
+      renderDireccionAcciones(rows);
     }
 
     function initDireccionModule() {
@@ -8349,6 +8565,21 @@ _UI_TEMPLATE = """<!doctype html>
         d.setDate(d.getDate() - 6);
         fromInput.value = toISODateInput(d);
       }
+      const incForm = document.getElementById("direccion-incidencia-form");
+      const accForm = document.getElementById("direccion-accion-form");
+      if (incForm && !incForm.dataset.defaultsSet) {
+        const f = incForm;
+        if (f.elements.fecha_detectada && !f.elements.fecha_detectada.value) {
+          f.elements.fecha_detectada.value = toInput.value;
+        }
+        incForm.dataset.defaultsSet = "true";
+      }
+      if (accForm && !accForm.dataset.defaultsSet) {
+        const f = accForm;
+        if (f.elements.week_start) f.elements.week_start.value = fromInput.value;
+        if (f.elements.week_end) f.elements.week_end.value = toInput.value;
+        accForm.dataset.defaultsSet = "true";
+      }
       if (form.dataset.bound === "true") {
         return;
       }
@@ -8357,6 +8588,128 @@ _UI_TEMPLATE = """<!doctype html>
         event.preventDefault();
         void refreshDireccionDashboard();
       });
+
+      if (incForm && incForm.dataset.bound !== "true") {
+        incForm.dataset.bound = "true";
+        incForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          clearMessage("direccion-incidencia-message");
+          const fd = new FormData(incForm);
+          const payload = {
+            titulo: String(fd.get("titulo") || "").trim(),
+            modulo: String(fd.get("modulo") || "general").trim(),
+            severidad: String(fd.get("severidad") || "media"),
+            estatus: String(fd.get("estatus") || "abierta"),
+            fecha_detectada: String(fd.get("fecha_detectada") || ""),
+            detalle: String(fd.get("detalle") || "").trim() || null,
+            responsable: String(fd.get("responsable") || "").trim() || null,
+          };
+          if (!payload.fecha_detectada) {
+            setMessage("direccion-incidencia-message", "Capture la fecha detectada de la incidencia.", "error");
+            return;
+          }
+          try {
+            await api("/direccion/incidencias", { method: "POST", body: JSON.stringify(payload) });
+            setMessage("direccion-incidencia-message", "Incidencia registrada.", "ok");
+            incForm.reset();
+            if (incForm.elements.fecha_detectada) incForm.elements.fecha_detectada.value = toInput.value;
+            await refreshDireccionIncidencias();
+            await refreshDireccionDashboard();
+          } catch (error) {
+            setMessage("direccion-incidencia-message", error?.message || "No se pudo registrar incidencia.", "error");
+          }
+        });
+      }
+
+      if (accForm && accForm.dataset.bound !== "true") {
+        accForm.dataset.bound = "true";
+        accForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          clearMessage("direccion-accion-message");
+          const fd = new FormData(accForm);
+          const payload = {
+            week_start: String(fd.get("week_start") || ""),
+            week_end: String(fd.get("week_end") || ""),
+            titulo: String(fd.get("titulo") || "").trim(),
+            descripcion: String(fd.get("descripcion") || "").trim() || null,
+            owner: String(fd.get("owner") || "").trim(),
+            due_date: String(fd.get("due_date") || "").trim() || null,
+            impacto: String(fd.get("impacto") || "").trim() || null,
+            estatus: String(fd.get("estatus") || "pendiente"),
+          };
+          if (!payload.week_start || !payload.week_end) {
+            setMessage("direccion-accion-message", "Capture semana inicio y semana fin para la acción.", "error");
+            return;
+          }
+          if (payload.week_start > payload.week_end) {
+            setMessage("direccion-accion-message", "Semana inicio no puede ser mayor que semana fin.", "error");
+            return;
+          }
+          try {
+            await api("/direccion/acciones", { method: "POST", body: JSON.stringify(payload) });
+            setMessage("direccion-accion-message", "Acción guardada.", "ok");
+            accForm.reset();
+            if (accForm.elements.week_start) accForm.elements.week_start.value = fromInput.value;
+            if (accForm.elements.week_end) accForm.elements.week_end.value = toInput.value;
+            await refreshDireccionAcciones();
+          } catch (error) {
+            setMessage("direccion-accion-message", error?.message || "No se pudo guardar acción.", "error");
+          }
+        });
+      }
+
+      const incList = document.getElementById("direccion-incidencias-lista");
+      if (incList && incList.dataset.bound !== "true") {
+        incList.dataset.bound = "true";
+        incList.addEventListener("click", async (event) => {
+          const btn = event.target.closest("[data-incidencia-save]");
+          if (!btn) return;
+          const tr = btn.closest("tr[data-incidencia-id]");
+          if (!tr) return;
+          const id = Number(tr.dataset.incidenciaId);
+          const severidad = tr.querySelector("[data-incidencia-severidad]")?.value || "media";
+          const estatus = tr.querySelector("[data-incidencia-estatus]")?.value || "abierta";
+          const responsable = tr.querySelector("[data-incidencia-responsable]")?.value || "";
+          try {
+            await api(`/direccion/incidencias/${id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ severidad, estatus, responsable: String(responsable).trim() || null }),
+            });
+            setMessage("direccion-incidencia-message", `Incidencia #${id} actualizada.`, "ok");
+            await refreshDireccionIncidencias();
+            await refreshDireccionDashboard();
+          } catch (error) {
+            setMessage("direccion-incidencia-message", error?.message || "No se pudo actualizar incidencia.", "error");
+          }
+        });
+      }
+
+      const accList = document.getElementById("direccion-acciones-lista");
+      if (accList && accList.dataset.bound !== "true") {
+        accList.dataset.bound = "true";
+        accList.addEventListener("click", async (event) => {
+          const btn = event.target.closest("[data-accion-save]");
+          if (!btn) return;
+          const tr = btn.closest("tr[data-accion-id]");
+          if (!tr) return;
+          const id = Number(tr.dataset.accionId);
+          const owner = tr.querySelector("[data-accion-owner]")?.value || "";
+          const estatus = tr.querySelector("[data-accion-estatus]")?.value || "pendiente";
+          try {
+            await api(`/direccion/acciones/${id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ owner: String(owner).trim(), estatus }),
+            });
+            setMessage("direccion-accion-message", `Acción #${id} actualizada.`, "ok");
+            await refreshDireccionAcciones();
+          } catch (error) {
+            setMessage("direccion-accion-message", error?.message || "No se pudo actualizar acción.", "error");
+          }
+        });
+      }
+
+      void refreshDireccionIncidencias().catch(() => {});
+      void refreshDireccionAcciones().catch(() => {});
     }
 
     function initNavigation() {

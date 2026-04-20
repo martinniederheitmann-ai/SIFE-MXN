@@ -26,6 +26,8 @@ from app.models import (  # noqa: E402, F401
     CotizacionFlete,
     Despacho,
     DespachoEvento,
+    DireccionAccion,
+    DireccionIncidencia,
     DocumentoOperador,
     Factura,
     Flete,

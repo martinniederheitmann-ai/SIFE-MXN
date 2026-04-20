@@ -10,6 +10,7 @@ from app.models.cliente import (
 )
 from app.models.cotizacion_flete import CotizacionFlete
 from app.models.despacho import Despacho, DespachoEvento
+from app.models.direccion import DireccionAccion, DireccionIncidencia
 from app.models.documento_operador import DocumentoOperador
 from app.models.factura import Factura
 from app.models.flete import Flete
@@ -38,6 +39,8 @@ __all__ = [
     "CotizacionFlete",
     "Despacho",
     "DespachoEvento",
+    "DireccionAccion",
+    "DireccionIncidencia",
     "DocumentoOperador",
     "Factura",
     "Flete",
