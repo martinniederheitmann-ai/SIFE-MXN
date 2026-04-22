@@ -31,6 +31,7 @@ ALL_API_PREFIXES: frozenset[str] = frozenset(
         "unidades",
         "asignaciones",
         "despachos",
+        "bajas-danos",
         "direccion",
         "cumplimiento",
         "usuarios",
@@ -52,6 +53,7 @@ ROLE_PREFIXES: dict[str, frozenset[str]] = {
             "cumplimiento",
             "motor-tarifas",
             "ordenes-servicio",
+            "bajas-danos",
         }
     ),
     "contabilidad": frozenset(
@@ -67,6 +69,7 @@ ROLE_PREFIXES: dict[str, frozenset[str]] = {
             "motor-tarifas",
             "ordenes-servicio",
             "cumplimiento",
+            "bajas-danos",
         }
     ),
     "ventas": frozenset(

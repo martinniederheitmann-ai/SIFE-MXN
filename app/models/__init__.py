@@ -1,6 +1,7 @@
 from app.models.base import Base
 from app.models.role import Role
 from app.models.asignacion import Asignacion
+from app.models.baja_dano import BajaDano
 from app.models.audit_log import AuditLog
 from app.models.cliente import (
     Cliente,
@@ -12,6 +13,8 @@ from app.models.cliente import (
 from app.models.cotizacion_flete import CotizacionFlete
 from app.models.despacho import Despacho, DespachoEvento
 from app.models.direccion import DireccionAccion, DireccionIncidencia
+from app.models.direccion_kpi_config import DireccionKpiConfig, DireccionKpiConfigHistory
+from app.models.direccion_semanal_reporte_snapshot import DireccionSemanalReporteSnapshot
 from app.models.documento_operador import DocumentoOperador
 from app.models.factura import Factura
 from app.models.flete import Flete
@@ -31,6 +34,7 @@ from app.models.viaje import Viaje
 
 __all__ = [
     "Asignacion",
+    "BajaDano",
     "AuditLog",
     "Base",
     "Cliente",
@@ -43,6 +47,9 @@ __all__ = [
     "DespachoEvento",
     "DireccionAccion",
     "DireccionIncidencia",
+    "DireccionKpiConfig",
+    "DireccionKpiConfigHistory",
+    "DireccionSemanalReporteSnapshot",
     "DocumentoOperador",
     "Factura",
     "Flete",

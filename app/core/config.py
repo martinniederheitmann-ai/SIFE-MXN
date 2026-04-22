@@ -33,6 +33,19 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 12
 
+    # Dirección: ventana de edición de umbrales KPI (operación cerrada fuera de ventana).
+    # Solo aplica a usuarios no-admin que intentan PUT /direccion/reportes/thresholds (override usuario).
+    DIRECCION_THRESHOLD_EDIT_WINDOW_ENABLED: bool = False
+    DIRECCION_THRESHOLD_EDIT_TIMEZONE: str = "America/Mexico_City"
+    DIRECCION_THRESHOLD_EDIT_WEEKDAY_START: int = 0  # 0=lunes … 6=domingo
+    DIRECCION_THRESHOLD_EDIT_WEEKDAY_END: int = 4  # inclusive (p.ej. 4=viernes)
+    DIRECCION_THRESHOLD_EDIT_HOUR_START: int = 9  # inclusive
+    DIRECCION_THRESHOLD_EDIT_HOUR_END: int = 18  # exclusive (hasta 17:59)
+
+    # Snapshot comité: POST sin JWT bajo /api/v1/internal/... con cabecera X-SIFE-Direccion-Cron-Secret.
+    DIRECCION_COMMITTEE_SNAPSHOT_CRON_SECRET: str = ""
+    DIRECCION_COMMITTEE_SNAPSHOT_CRON_ACTOR_USERNAME: str = ""
+
     @property
     def database_url(self) -> str:
         user = quote_plus(self.MYSQL_USER)

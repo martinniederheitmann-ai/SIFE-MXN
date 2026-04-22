@@ -1,11 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI
 from fastapi.openapi.utils import get_openapi
+from fastapi.staticfiles import StaticFiles
 
 from app.api.rbac import require_rbac
 from app.api.routes import api_router
 from app.api.routes import auth as auth_routes
+from app.api.routes import internal_cron as internal_cron_routes
 from app.core.config import settings
 from app.web import router as web_router
 
@@ -38,6 +41,7 @@ app = FastAPI(
         {"name": "unidades", "description": "Catálogo mínimo de unidades para asignación operativa."},
         {"name": "asignaciones", "description": "Asignación de operador, unidad y viaje."},
         {"name": "despachos", "description": "Seguimiento operativo de salidas, eventos, entregas y cierres."},
+        {"name": "bajas-danos", "description": "Registro de bajas operativas y daños a activo o carga."},
         {
             "name": "cumplimiento-documental",
             "description": "Requisitos de documentación (Carta Porte, SCT, operador) y validación previa a salida.",
@@ -62,6 +66,14 @@ app.include_router(
     prefix=settings.API_V1_PREFIX,
     dependencies=[Depends(require_rbac)],
 )
+app.include_router(
+    internal_cron_routes.router,
+    prefix=f"{settings.API_V1_PREFIX}/internal",
+    tags=["sistema"],
+)
+_static_dir = Path(__file__).resolve().parent / "static"
+if _static_dir.is_dir():
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 app.include_router(web_router)
 
 
